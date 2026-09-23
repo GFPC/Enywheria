@@ -7,12 +7,29 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.exceptions import InvalidSignature
-from app.config import settings
+
+
+def _get_raw_key_string() -> str:
+    """Retrieve raw key string from settings or environment variable."""
+    try:
+        from app.config import settings
+        return settings.ENCRYPTION_KEY
+    except Exception:
+        return os.environ.get("ENCRYPTION_KEY", "dGhpcy1pcy1hLTMyLWJ5dGUtZW5jcnlwdGlvbi1rZXktMTIzNDU=")
+
+
+def _get_keys_dir() -> Path:
+    """Retrieve keys directory from settings or environment variable."""
+    try:
+        from app.config import settings
+        return settings.keys_path
+    except Exception:
+        return Path("data/keys")
 
 
 def _get_aes_key() -> bytes:
-    """Derive 256-bit key from settings.ENCRYPTION_KEY."""
-    raw_key = settings.ENCRYPTION_KEY.encode("utf-8")
+    """Derive 256-bit key from ENCRYPTION_KEY."""
+    raw_key = _get_raw_key_string().encode("utf-8")
     try:
         decoded = base64.b64decode(raw_key)
         if len(decoded) == 32:
@@ -41,11 +58,12 @@ def decrypt_data(encrypted_data: bytes) -> bytes:
     return aesgcm.decrypt(nonce, ciphertext, None)
 
 
-def generate_ecdsa_keypair(keys_dir: Path) -> Tuple[Path, Path]:
+def generate_ecdsa_keypair(keys_dir: Optional[Path] = None) -> Tuple[Path, Path]:
     """Generate and save ECDSA private and public keys if they don't exist."""
-    keys_dir.mkdir(parents=True, exist_ok=True)
-    priv_path = keys_dir / "ecdsa_private.pem"
-    pub_path = keys_dir / "ecdsa_public.pem"
+    target_dir = keys_dir or _get_keys_dir()
+    target_dir.mkdir(parents=True, exist_ok=True)
+    priv_path = target_dir / "ecdsa_private.pem"
+    pub_path = target_dir / "ecdsa_public.pem"
 
     if not priv_path.exists():
         private_key = ec.generate_private_key(ec.SECP256R1())
@@ -64,7 +82,7 @@ def generate_ecdsa_keypair(keys_dir: Path) -> Tuple[Path, Path]:
     return priv_path, pub_path
 
 
-def sign_data(data: bytes, keys_dir: Path) -> str:
+def sign_data(data: bytes, keys_dir: Optional[Path] = None) -> str:
     """Sign data using ECDSA private key and return hex signature."""
     priv_path, _ = generate_ecdsa_keypair(keys_dir)
     priv_pem = priv_path.read_bytes()
@@ -73,7 +91,7 @@ def sign_data(data: bytes, keys_dir: Path) -> str:
     return signature.hex()
 
 
-def verify_signature(data: bytes, signature_hex: str, keys_dir: Path) -> bool:
+def verify_signature(data: bytes, signature_hex: str, keys_dir: Optional[Path] = None) -> bool:
     """Verify ECDSA signature against public key."""
     _, pub_path = generate_ecdsa_keypair(keys_dir)
     pub_pem = pub_path.read_bytes()
