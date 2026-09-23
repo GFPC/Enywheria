@@ -181,11 +181,14 @@ func (n *P2PNode) lanListenLoop() {
 			localPeerAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", raddr.IP.String(), int(portNum)))
 			if err == nil {
 				n.peerAddrMutex.Lock()
+				alreadyDirect := n.isDirect && n.peerAddr != nil && n.peerAddr.String() == localPeerAddr.String()
 				n.peerAddr = localPeerAddr
 				n.isDirect = true
 				n.peerAddrMutex.Unlock()
 
-				log.Printf("[Go P2P] Discovered local LAN peer '%s' at %s! Mode: DIRECT_LAN (1-5ms)\n", pkt.Sender, localPeerAddr)
+				if !alreadyDirect {
+					log.Printf("[Go P2P] Discovered local LAN peer '%s' at %s! Mode: DIRECT_LAN (1-5ms)\n", pkt.Sender, localPeerAddr)
+				}
 
 				select {
 				case n.punchAckChan <- true:
@@ -308,10 +311,13 @@ func (n *P2PNode) readLoop() {
 				localPeerAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", raddr.IP.String(), int(portNum)))
 				if err == nil {
 					n.peerAddrMutex.Lock()
+					alreadyDirect := n.isDirect && n.peerAddr != nil && n.peerAddr.String() == localPeerAddr.String()
 					n.peerAddr = localPeerAddr
 					n.isDirect = true
 					n.peerAddrMutex.Unlock()
-					log.Printf("[Go P2P] Discovered local LAN peer '%s' at %s! Mode: DIRECT_LAN (1-5ms)\n", pkt.Sender, localPeerAddr)
+					if !alreadyDirect {
+						log.Printf("[Go P2P] Discovered local LAN peer '%s' at %s! Mode: DIRECT_LAN (1-5ms)\n", pkt.Sender, localPeerAddr)
+					}
 					select {
 					case n.punchAckChan <- true:
 					default:
