@@ -239,7 +239,7 @@ func parseCLIArgs(args []string) (relay, nodeID, targetID, token string, localPo
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		if arg == execName || strings.Contains(arg, "enywheria-p2p") {
+		if arg == execName || strings.Contains(arg, "enywheria") || strings.Contains(arg, "/") || strings.Contains(arg, "\\") {
 			continue
 		}
 
