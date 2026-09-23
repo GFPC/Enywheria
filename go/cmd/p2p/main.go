@@ -56,7 +56,7 @@ func getBroadcastAddresses(port int) []*net.UDPAddr {
 	}
 
 	for _, iface := range ifaces {
-		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+		if iface.Flags&net.FlagLoopback != 0 {
 			continue
 		}
 		addrsList, err := iface.Addrs()
