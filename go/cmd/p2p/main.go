@@ -59,6 +59,7 @@ func NewP2PNode(nodeID, targetID, relayStr, token string, localPort int) (*P2PNo
 func (n *P2PNode) Start() {
 	go n.readLoop()
 	go n.keepaliveLoop()
+	go n.startLANDiscovery()
 
 	// Register with relay server
 	n.register()
@@ -68,6 +69,76 @@ func (n *P2PNode) Start() {
 		log.Println("[Go P2P] Registered with relay server.")
 	case <-time.After(5 * time.Second):
 		log.Println("[Go P2P] Warning: STUN registration timeout.")
+	}
+}
+
+const lanBroadcastPort = 9999
+
+func (n *P2PNode) startLANDiscovery() {
+	go n.lanListenLoop()
+	go n.lanBroadcastLoop()
+}
+
+func (n *P2PNode) lanBroadcastLoop() {
+	bcastAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("255.255.255.255:%d", lanBroadcastPort))
+	if err != nil {
+		return
+	}
+
+	ticker := time.NewTicker(3 * time.Second)
+	defer ticker.Stop()
+
+	boundPort := n.conn.LocalAddr().(*net.UDPAddr).Port
+
+	for range ticker.C {
+		announce, _ := protocol.CreatePacket("LAN_ANNOUNCE", n.nodeID, n.targetID, n.token, map[string]interface{}{
+			"port": float64(boundPort),
+		})
+		n.conn.WriteToUDP(announce, bcastAddr)
+	}
+}
+
+func (n *P2PNode) lanListenLoop() {
+	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("0.0.0.0:%d", lanBroadcastPort))
+	if err != nil {
+		return
+	}
+
+	bconn, err := net.ListenUDP("udp", addr)
+	if err != nil {
+		return
+	}
+	defer bconn.Close()
+
+	buf := make([]byte, 65535)
+	for {
+		lenN, raddr, err := bconn.ReadFromUDP(buf)
+		if err != nil {
+			return
+		}
+
+		pkt, err := protocol.ParsePacket(buf[:lenN])
+		if err != nil || pkt == nil {
+			continue
+		}
+
+		if pkt.Type == "LAN_ANNOUNCE" && pkt.Token == n.token && pkt.Sender == n.targetID {
+			portNum, _ := pkt.Payload["port"].(float64)
+			localPeerAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", raddr.IP.String(), int(portNum)))
+			if err == nil {
+				n.peerAddrMutex.Lock()
+				n.peerAddr = localPeerAddr
+				n.isDirect = true
+				n.peerAddrMutex.Unlock()
+
+				log.Printf("[Go P2P] Discovered local LAN peer '%s' at %s! Mode: DIRECT_LAN (1-5ms)\n", pkt.Sender, localPeerAddr)
+
+				select {
+				case n.punchAckChan <- true:
+				default:
+				}
+			}
+		}
 	}
 }
 
@@ -160,6 +231,23 @@ func (n *P2PNode) readLoop() {
 		}
 
 		switch pkt.Type {
+		case "LAN_ANNOUNCE":
+			if pkt.Token == n.token && pkt.Sender == n.targetID {
+				portNum, _ := pkt.Payload["port"].(float64)
+				localPeerAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", raddr.IP.String(), int(portNum)))
+				if err == nil {
+					n.peerAddrMutex.Lock()
+					n.peerAddr = localPeerAddr
+					n.isDirect = true
+					n.peerAddrMutex.Unlock()
+					log.Printf("[Go P2P] Discovered local LAN peer '%s' at %s! Mode: DIRECT_LAN (1-5ms)\n", pkt.Sender, localPeerAddr)
+					select {
+					case n.punchAckChan <- true:
+					default:
+					}
+				}
+			}
+
 		case "REGISTER_ACK":
 			select {
 			case n.registeredChan <- true:
