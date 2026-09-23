@@ -1,7 +1,14 @@
+README.md
 pyproject.toml
 src/enywheria/__init__.py
 src/enywheria.egg-info/PKG-INFO
 src/enywheria.egg-info/SOURCES.txt
 src/enywheria.egg-info/dependency_links.txt
+src/enywheria.egg-info/entry_points.txt
 src/enywheria.egg-info/requires.txt
 src/enywheria.egg-info/top_level.txt
+tests/test_devices.py
+tests/test_files.py
+tests/test_items.py
+tests/test_notes.py
+tests/test_search.py

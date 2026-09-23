@@ -21,6 +21,10 @@ dependencies = [
     "jinja2>=3.1.3",
 ]
 
+[project.scripts]
+enywheria-relay = "app.p2p.cli:run_relay"
+enywheria-p2p = "app.p2p.cli:run_node"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.1.1",
