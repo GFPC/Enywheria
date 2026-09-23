@@ -99,6 +99,7 @@ class P2PNode:
 
         self.peer_endpoints: Dict[str, Tuple[str, int]] = {}
         self.direct_p2p_active: Dict[str, bool] = {}
+        self._keepalive_task: Optional[asyncio.Task] = None
 
     async def start(self):
         loop = asyncio.get_running_loop()
@@ -108,22 +109,36 @@ class P2PNode:
             local_addr=("0.0.0.0", self.local_port),
         )
 
-        # Register with relay server
-        reg_pkt = create_packet(
-            msg_type=MessageType.REGISTER,
-            sender=self.node_id,
-            secret_token=self.secret_token,
-        )
-        self.transport.sendto(reg_pkt, (self.relay_host, self.relay_port))
+        # Send initial registration
+        self._register_with_relay()
 
         try:
             await asyncio.wait_for(self.registered_event.wait(), timeout=5.0)
         except asyncio.TimeoutError:
             logger.warning(f"Could not connect to relay server at {self.relay_host}:{self.relay_port}. Proceeding anyway...")
 
+        # Start periodic keepalive task
+        self._keepalive_task = asyncio.create_task(self._keepalive_loop())
+
+    def _register_with_relay(self):
+        reg_pkt = create_packet(
+            msg_type=MessageType.REGISTER,
+            sender=self.node_id,
+            secret_token=self.secret_token,
+        )
+        if self.transport:
+            self.transport.sendto(reg_pkt, (self.relay_host, self.relay_port))
+
+    async def _keepalive_loop(self):
+        """Periodically re-register with relay server to keep NAT binding open."""
+        while True:
+            await asyncio.sleep(15)
+            self._register_with_relay()
+
     async def connect_peer(self, target_id: str) -> bool:
         """Lookup peer and attempt UDP Hole Punching. Fallback to Relay mode if hole punch fails."""
         logger.info(f"Initiating connection to peer '{target_id}'...")
+        self.peer_discovered_event.clear()
 
         # Step 1: Send Lookup packet to Relay server
         lookup_pkt = create_packet(
@@ -137,7 +152,7 @@ class P2PNode:
         try:
             await asyncio.wait_for(self.peer_discovered_event.wait(), timeout=5.0)
         except asyncio.TimeoutError:
-            logger.error(f"Peer discovery timeout for '{target_id}'")
+            logger.error(f"Peer discovery timeout for '{target_id}' (peer not registered on relay yet)")
             return False
 
         target_addr = self.peer_endpoints.get(target_id)
@@ -195,6 +210,8 @@ class P2PNode:
             logger.debug(f"Sent RELAY packet to {target_id} via {relay_addr}")
 
     def close(self):
+        if self._keepalive_task:
+            self._keepalive_task.cancel()
         if self.transport:
             self.transport.close()
 
