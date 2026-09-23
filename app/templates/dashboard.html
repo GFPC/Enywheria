@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Stat Cards Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-slate-800 border border-slate-700 p-5 rounded-xl flex items-center justify-between">
+            <div>
+                <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Total Items</p>
+                <h3 class="text-2xl font-bold mt-1 text-slate-100">{{ items_count }}</h3>
+            </div>
+            <div class="text-3xl">📁</div>
+        </div>
+        <div class="bg-slate-800 border border-slate-700 p-5 rounded-xl flex items-center justify-between">
+            <div>
+                <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Notes</p>
+                <h3 class="text-2xl font-bold mt-1 text-slate-100">{{ notes|length }}</h3>
+            </div>
+            <div class="text-3xl">📝</div>
+        </div>
+        <div class="bg-slate-800 border border-slate-700 p-5 rounded-xl flex items-center justify-between">
+            <div>
+                <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Devices Controlled</p>
+                <h3 class="text-2xl font-bold mt-1 text-slate-100">{{ devices|length }}</h3>
+            </div>
+            <div class="text-3xl">🖥️</div>
+        </div>
+        <div class="bg-slate-800 border border-slate-700 p-5 rounded-xl flex items-center justify-between">
+            <div>
+                <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Physical Boxes</p>
+                <h3 class="text-2xl font-bold mt-1 text-slate-100">{{ boxes|length }}</h3>
+            </div>
+            <div class="text-3xl">📦</div>
+        </div>
+    </div>
+
+    <!-- Quick Upload Form -->
+    <div class="bg-slate-800 border border-slate-700 rounded-xl p-6">
+        <h2 class="text-lg font-bold mb-4 text-indigo-300 flex items-center gap-2">
+            <span>📤</span> Quick File Upload (Auto SHA-256 Deduplicated)
+        </h2>
+        <form action="/api/v1/files/upload" method="post" enctype="multipart/form-data" class="flex flex-wrap gap-4 items-center">
+            <input type="file" name="file" required class="block text-sm text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer">
+            <input type="text" name="title" placeholder="Optional custom title" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
+            <select name="type" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
+                <option value="photo">Photo</option>
+                <option value="pdf">PDF</option>
+                <option value="note">Note</option>
+                <option value="link">Link</option>
+                <option value="script">Script</option>
+                <option value="schematic">Schematic</option>
+                <option value="log">Log</option>
+                <option value="firmware">Firmware</option>
+                <option value="other" selected>Other</option>
+            </select>
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm px-5 py-2 rounded-lg transition shadow-lg shadow-indigo-600/30">
+                Upload & Index
+            </button>
+        </form>
+    </div>
+
+    <!-- Content Columns -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Recent Items List -->
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-5">
+            <h3 class="font-bold text-slate-200 mb-4 flex justify-between items-center">
+                <span>Recent Central Items</span>
+                <span class="text-xs text-slate-400 font-normal">Last {{ items|length }} assets</span>
+            </h3>
+            <div class="space-y-3">
+                {% for item in items %}
+                <div class="bg-slate-900 border border-slate-700/60 p-3 rounded-lg flex items-center justify-between">
+                    <div>
+                        <div class="font-medium text-sm text-indigo-200">{{ item.title }}</div>
+                        <div class="text-xs text-slate-400 flex items-center gap-2 mt-1">
+                            <span class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-[10px] uppercase font-mono">{{ item.type.value }}</span>
+                            {% if item.file_hash %}
+                            <span class="font-mono text-[10px] text-slate-500">SHA: {{ item.file_hash[:8] }}...</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if item.file_path %}
+                    <a href="/api/v1/files/{{ item.id }}" class="text-xs bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg border border-slate-700 transition">Download</a>
+                    {% endif %}
+                </div>
+                {% else %}
+                <p class="text-slate-500 text-sm py-4 text-center">No items uploaded yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Notes Preview -->
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-5">
+            <h3 class="font-bold text-slate-200 mb-4 flex justify-between items-center">
+                <span>Notes & Knowledge</span>
+                <span class="text-xs text-slate-400 font-normal">Markdown enabled</span>
+            </h3>
+            <div class="space-y-3">
+                {% for note in notes %}
+                <div class="bg-slate-900 border border-slate-700/60 p-3 rounded-lg">
+                    <div class="font-medium text-sm text-indigo-300">{{ note.title }}</div>
+                    <p class="text-xs text-slate-400 mt-1 line-clamp-2">{{ note.body }}</p>
+                </div>
+                {% else %}
+                <p class="text-slate-500 text-sm py-4 text-center">No notes created yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
