@@ -230,8 +230,34 @@ async def run_cli_node():
     relay_port = int(relay_parts[1]) if len(relay_parts) > 1 else 9000
 
     def print_incoming(sender: str, payload: Dict, mode: str):
-        msg_text = payload.get("msg", str(payload))
-        print(f"\n📩 [{mode}] From {sender}: {msg_text}")
+        cmd = payload.get("cmd")
+        resp = payload.get("resp")
+
+        if resp == "ping":
+            sent_time = payload.get("time", time.time())
+            latency = round((time.time() - sent_time) * 1000, 2)
+            print(f"\n🏓 [{mode}] Pong from {sender}! Latency: {latency} ms")
+        elif resp == "list_items":
+            items = payload.get("items", [])
+            print(f"\n📁 [{mode}] Remote Items from {sender} ({len(items)} items):")
+            for idx, item in enumerate(items, 1):
+                print(f"  {idx}. [{item['type']}] {item['title']} (ID: {item['id']})")
+        elif resp == "list_notes":
+            notes = payload.get("notes", [])
+            print(f"\n📝 [{mode}] Remote Notes from {sender} ({len(notes)} notes):")
+            for idx, note in enumerate(notes, 1):
+                print(f"  {idx}. {note['title']}: {note['body']}")
+        elif cmd == "ping":
+            # Auto reply ping
+            asyncio.create_task(node.send_message(sender, {"resp": "ping", "time": payload.get("time")}))
+        elif cmd == "list_items":
+            asyncio.create_task(node.send_message(sender, {"resp": "list_items", "items": [{"id": "sample-1", "title": "Sample Vault Item", "type": "note"}]}))
+        elif cmd == "list_notes":
+            asyncio.create_task(node.send_message(sender, {"resp": "list_notes", "notes": [{"id": "note-1", "title": "Sample Note", "body": "Hello from P2P Vault"}]}))
+        else:
+            msg_text = payload.get("msg", str(payload))
+            print(f"\n📩 [{mode}] From {sender}: {msg_text}")
+        
         print(f"{args.node_id}> ", end="", flush=True)
 
     node = P2PNode(
@@ -247,9 +273,14 @@ async def run_cli_node():
     await node.connect_peer(args.target_id)
 
     print(f"\n=======================================================")
-    print(f"🚀 P2P Terminal Session Ready! Linked with '{args.target_id}'")
-    print(f"Type your message and press ENTER to send.")
-    print(f"Type 'exit' to quit.")
+    print(f"🚀 P2P Interactive CLI Ready! Linked with '{args.target_id}'")
+    print(f"Commands available:")
+    print(f"  /ping         - Measure P2P ping/latency to '{args.target_id}'")
+    print(f"  /items        - List remote vault items from '{args.target_id}'")
+    print(f"  /notes        - List remote notes from '{args.target_id}'")
+    print(f"  /help         - Show this help screen")
+    print(f"  exit          - Quit session")
+    print(f"Or type any text to send a direct message.")
     print(f"=======================================================\n")
 
     loop = asyncio.get_running_loop()
@@ -264,7 +295,17 @@ async def run_cli_node():
             if msg.lower() == "exit":
                 break
 
-            await node.send_message(args.target_id, {"msg": msg, "time": time.time()})
+            if msg == "/ping":
+                await node.send_message(args.target_id, {"cmd": "ping", "time": time.time()})
+            elif msg == "/items":
+                await node.send_message(args.target_id, {"cmd": "list_items"})
+            elif msg == "/notes":
+                await node.send_message(args.target_id, {"cmd": "list_notes"})
+            elif msg == "/help":
+                print("\nAvailable commands: /ping, /items, /notes, /help, exit")
+            else:
+                await node.send_message(args.target_id, {"msg": msg, "time": time.time()})
+            
             print(f"{args.node_id}> ", end="", flush=True)
         except (KeyboardInterrupt, EOFError):
             break
