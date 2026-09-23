@@ -14,14 +14,14 @@
 }
 
 body {
-  background-color: #080b12;
-  color: #e2e8f0;
+  background-color: #09090b;
+  color: #f4f4f5;
   overflow: hidden;
   user-select: none;
   font-size: 12px;
 }
 
-/* Custom Scrollbar */
+/* Monochrome Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
@@ -32,47 +32,28 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(139, 92, 246, 0.25);
+  background: rgba(113, 113, 122, 0.3);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(139, 92, 246, 0.5);
+  background: rgba(113, 113, 122, 0.5);
 }
 
-/* Cyber Cards */
-.cyber-card {
-  background: rgba(15, 20, 34, 0.8);
+/* Grayscale Cards */
+.mono-card {
+  background: rgba(18, 18, 21, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.cyber-card-hover {
+.mono-card-hover {
   transition: all 0.15s ease-in-out;
 }
 
-.cyber-card-hover:hover {
-  background: rgba(22, 30, 50, 0.9);
-  border-color: rgba(139, 92, 246, 0.4);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-}
-
-.gradient-purple-text {
-  background: linear-gradient(135deg, #c084fc 0%, #8b5cf6 50%, #6366f1 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.pulse-dot {
-  animation: pulse-glow 2s infinite ease-in-out;
-}
-
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
-  }
+.mono-card-hover:hover {
+  background: rgba(24, 24, 29, 0.95);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
 }
