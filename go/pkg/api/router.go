@@ -1,11 +1,12 @@
 package api
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 
@@ -13,6 +14,9 @@ import (
 	"github.com/GFPC/Enywheria/pkg/models"
 	"github.com/GFPC/Enywheria/pkg/repository"
 )
+
+//go:embed dist/*
+var embeddedDist embed.FS
 
 type Server struct {
 	repo *repository.Repository
@@ -36,10 +40,33 @@ func withCORS(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-
 func (s *Server) RegisterRoutes(mux *http.ServeMux) {
-	// Web UI
-	mux.HandleFunc("/", s.handleDashboard)
+	// Web UI SPA & Embedded Static Server
+	subFS, err := fs.Sub(embeddedDist, "dist")
+	if err == nil {
+		fileServer := http.FileServer(http.FS(subFS))
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, "/api/") {
+				http.NotFound(w, r)
+				return
+			}
+			path := strings.TrimPrefix(r.URL.Path, "/")
+			if path == "" {
+				path = "index.html"
+			}
+			f, err := subFS.Open(path)
+			if err == nil {
+				_ = f.Close()
+				fileServer.ServeHTTP(w, r)
+				return
+			}
+			// Fallback to index.html for SPA router
+			r.URL.Path = "/"
+			fileServer.ServeHTTP(w, r)
+		})
+	} else {
+		mux.HandleFunc("/", s.handleDashboard)
+	}
 
 	// API Health
 	mux.HandleFunc("/api/v1/health", withCORS(s.handleHealth))
@@ -81,7 +108,6 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	// API File Upload
 	mux.HandleFunc("/api/v1/files/upload", withCORS(s.handleFileUpload))
 }
-
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
@@ -311,18 +337,10 @@ func (s *Server) handleFileUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
-	// If desktop/dist exists, serve static React desktop app
-	if _, err := os.Stat("desktop/dist/index.html"); err == nil {
-		fs := http.FileServer(http.Dir("desktop/dist"))
-		fs.ServeHTTP(w, r)
-		return
-	}
-
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
-
 
 	items, _ := s.repo.ListItems(10, 0)
 	notes, _ := s.repo.ListNotes()
