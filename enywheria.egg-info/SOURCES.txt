@@ -1,5 +1,6 @@
 README.md
 pyproject.toml
+setup.py
 app/__init__.py
 app/config.py
 app/database.py
@@ -22,6 +23,7 @@ app/p2p/cli.py
 app/p2p/node.py
 app/p2p/protocol.py
 app/p2p/relay_server.py
+app/p2p/sync.py
 app/repositories/__init__.py
 app/repositories/base.py
 app/repositories/box_repo.py

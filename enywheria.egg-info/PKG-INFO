@@ -4,18 +4,19 @@ Version: 0.1.0
 Summary: Personal Knowledge & Asset System (PersonalVault)
 Author-email: greg <fealx15@gmail.com>
 Requires-Python: >=3.11
-Requires-Dist: fastapi>=0.110.0
-Requires-Dist: uvicorn[standard]>=0.28.0
-Requires-Dist: sqlalchemy[asyncio]>=2.0.28
-Requires-Dist: aiosqlite>=0.20.0
-Requires-Dist: alembic>=1.13.1
-Requires-Dist: pydantic>=2.6.4
-Requires-Dist: pydantic-settings>=2.2.1
 Requires-Dist: cryptography>=42.0.5
-Requires-Dist: rapidfuzz>=3.6.2
 Requires-Dist: loguru>=0.7.2
-Requires-Dist: python-multipart>=0.0.9
-Requires-Dist: jinja2>=3.1.3
+Provides-Extra: server
+Requires-Dist: fastapi>=0.110.0; extra == "server"
+Requires-Dist: uvicorn[standard]>=0.28.0; extra == "server"
+Requires-Dist: sqlalchemy[asyncio]>=2.0.28; extra == "server"
+Requires-Dist: aiosqlite>=0.20.0; extra == "server"
+Requires-Dist: alembic>=1.13.1; extra == "server"
+Requires-Dist: pydantic>=2.6.4; extra == "server"
+Requires-Dist: pydantic-settings>=2.2.1; extra == "server"
+Requires-Dist: python-multipart>=0.0.9; extra == "server"
+Requires-Dist: jinja2>=3.1.3; extra == "server"
+Requires-Dist: rapidfuzz>=3.6.2; extra == "server"
 Provides-Extra: dev
 Requires-Dist: pytest>=8.1.1; extra == "dev"
 Requires-Dist: pytest-asyncio>=0.23.6; extra == "dev"

@@ -12,6 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
+enywheria-server = "app.main:run_server"
 enywheria-relay = "app.p2p.cli:run_relay"
 enywheria-p2p = "app.p2p.cli:run_node"
 

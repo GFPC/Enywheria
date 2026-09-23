@@ -86,3 +86,11 @@ app.include_router(health_router, prefix=api_v1_prefix)
 
 # Register Web UI Router
 app.include_router(ui_router)
+
+
+def run_server():
+    """CLI Entrypoint to launch FastAPI Server."""
+    import uvicorn
+
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=False)
+

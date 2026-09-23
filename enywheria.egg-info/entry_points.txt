@@ -1,3 +1,4 @@
 [console_scripts]
 enywheria-p2p = app.p2p.cli:run_node
 enywheria-relay = app.p2p.cli:run_relay
+enywheria-server = app.main:run_server
