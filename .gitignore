@@ -37,3 +37,10 @@ htmlcov/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# Frontend & Rust build
+node_modules/
+dist/
+target/
+.tauri/
+

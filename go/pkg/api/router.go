@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -22,50 +23,65 @@ func NewServer(repo *repository.Repository, fs *fileservice.FileService) *Server
 	return &Server{repo: repo, fs: fs}
 }
 
+func withCORS(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		next(w, r)
+	}
+}
+
+
 func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	// Web UI
 	mux.HandleFunc("/", s.handleDashboard)
 
 	// API Health
-	mux.HandleFunc("/api/v1/health", s.handleHealth)
+	mux.HandleFunc("/api/v1/health", withCORS(s.handleHealth))
 
 	// API Items
-	mux.HandleFunc("/api/v1/items", s.handleItems)
-	mux.HandleFunc("/api/v1/items/", s.handleItemByID)
+	mux.HandleFunc("/api/v1/items", withCORS(s.handleItems))
+	mux.HandleFunc("/api/v1/items/", withCORS(s.handleItemByID))
 
 	// API Tags
-	mux.HandleFunc("/api/v1/tags", s.handleTags)
+	mux.HandleFunc("/api/v1/tags", withCORS(s.handleTags))
 
 	// API Collections
-	mux.HandleFunc("/api/v1/collections", s.handleCollections)
+	mux.HandleFunc("/api/v1/collections", withCORS(s.handleCollections))
 
 	// API Projects
-	mux.HandleFunc("/api/v1/projects", s.handleProjects)
+	mux.HandleFunc("/api/v1/projects", withCORS(s.handleProjects))
 
 	// API Clients
-	mux.HandleFunc("/api/v1/clients", s.handleClients)
+	mux.HandleFunc("/api/v1/clients", withCORS(s.handleClients))
 
 	// API Devices
-	mux.HandleFunc("/api/v1/devices", s.handleDevices)
+	mux.HandleFunc("/api/v1/devices", withCORS(s.handleDevices))
 
 	// API Scripts
-	mux.HandleFunc("/api/v1/scripts", s.handleScripts)
+	mux.HandleFunc("/api/v1/scripts", withCORS(s.handleScripts))
 
 	// API Boxes
-	mux.HandleFunc("/api/v1/boxes", s.handleBoxes)
+	mux.HandleFunc("/api/v1/boxes", withCORS(s.handleBoxes))
 
 	// API Notes
-	mux.HandleFunc("/api/v1/notes", s.handleNotes)
+	mux.HandleFunc("/api/v1/notes", withCORS(s.handleNotes))
 
 	// API Events
-	mux.HandleFunc("/api/v1/events", s.handleEvents)
+	mux.HandleFunc("/api/v1/events", withCORS(s.handleEvents))
 
 	// API Search
-	mux.HandleFunc("/api/v1/search", s.handleSearch)
+	mux.HandleFunc("/api/v1/search", withCORS(s.handleSearch))
 
 	// API File Upload
-	mux.HandleFunc("/api/v1/files/upload", s.handleFileUpload)
+	mux.HandleFunc("/api/v1/files/upload", withCORS(s.handleFileUpload))
 }
+
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
@@ -295,10 +311,18 @@ func (s *Server) handleFileUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
+	// If desktop/dist exists, serve static React desktop app
+	if _, err := os.Stat("desktop/dist/index.html"); err == nil {
+		fs := http.FileServer(http.Dir("desktop/dist"))
+		fs.ServeHTTP(w, r)
+		return
+	}
+
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
+
 
 	items, _ := s.repo.ListItems(10, 0)
 	notes, _ := s.repo.ListNotes()
