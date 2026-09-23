@@ -15,7 +15,7 @@ import (
 	"github.com/GFPC/Enywheria/pkg/repository"
 )
 
-//go:embed dist/*
+//go:embed all:dist
 var embeddedDist embed.FS
 
 type Server struct {
@@ -42,26 +42,14 @@ func withCORS(next http.HandlerFunc) http.HandlerFunc {
 
 func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	// Web UI SPA & Embedded Static Server
-	subFS, err := fs.Sub(embeddedDist, "dist")
+	distFS, err := fs.Sub(embeddedDist, "dist")
 	if err == nil {
-		fileServer := http.FileServer(http.FS(subFS))
+		fileServer := http.FileServer(http.FS(distFS))
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/api/") {
 				http.NotFound(w, r)
 				return
 			}
-			path := strings.TrimPrefix(r.URL.Path, "/")
-			if path == "" {
-				path = "index.html"
-			}
-			f, err := subFS.Open(path)
-			if err == nil {
-				_ = f.Close()
-				fileServer.ServeHTTP(w, r)
-				return
-			}
-			// Fallback to index.html for SPA router
-			r.URL.Path = "/"
 			fileServer.ServeHTTP(w, r)
 		})
 	} else {
