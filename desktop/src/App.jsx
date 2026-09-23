@@ -30,7 +30,14 @@ import {
   ArrowUpRight,
   Clock,
   Shield,
-  Radio
+  Radio,
+  Sliders,
+  Sparkles,
+  Command,
+  FileCode,
+  Tag,
+  ArrowRight,
+  ChevronDown
 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000/api/v1';
@@ -56,11 +63,12 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Copy state
+  // Copy helper state
   const [copiedId, setCopiedId] = useState(null);
 
-  // Note selection
+  // Markdown Studio state
   const [selectedNote, setSelectedNote] = useState(null);
+  const [noteViewMode, setNoteViewMode] = useState('split'); // 'split' | 'edit' | 'preview'
 
   // Modals state
   const [newNoteModalOpen, setNewNoteModalOpen] = useState(false);
@@ -69,8 +77,11 @@ export default function App() {
   const [newProjectModalOpen, setNewProjectModalOpen] = useState(false);
   const [projectForm, setProjectForm] = useState({ name: '', description: '', status: 'active' });
 
-  // P2P ping telemetry
-  const [p2pLatency, setP2pLatency] = useState(1.4);
+  // Audit filter state
+  const [auditFilter, setAuditFilter] = useState('ALL');
+
+  // P2P telemetry
+  const [p2pLatency, setP2pLatency] = useState(1.42);
 
   // Keyboard shortcut Ctrl+K
   useEffect(() => {
@@ -221,10 +232,10 @@ export default function App() {
     {
       group: 'WORKSPACE',
       items: [
-        { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
-        { id: 'assets', label: 'Vault Storage', icon: FolderKanban, count: items.length },
+        { id: 'dashboard', label: 'Command Hub', icon: LayoutDashboard },
+        { id: 'assets', label: 'Vault Assets', icon: FolderKanban, count: items.length },
         { id: 'notes', label: 'Knowledge Base', icon: FileText, count: notes.length },
-        { id: 'projects', label: 'Projects & Tasks', icon: Layers, count: projects.length },
+        { id: 'projects', label: 'Mission Operations', icon: Layers, count: projects.length },
       ],
     },
     {
@@ -232,37 +243,40 @@ export default function App() {
       items: [
         { id: 'clients', label: 'Entities & Clients', icon: Users, count: clients.length },
         { id: 'devices', label: 'Managed Nodes', icon: Monitor, count: devices.length },
-        { id: 'scripts', label: 'Automation Scripts', icon: Terminal, count: scripts.length },
-        { id: 'boxes', label: 'Storage Boxes', icon: Package, count: boxes.length },
+        { id: 'scripts', label: 'Automation Matrix', icon: Terminal, count: scripts.length },
+        { id: 'boxes', label: 'Storage Units', icon: Package, count: boxes.length },
       ],
     },
     {
-      group: 'SYSTEM & NETWORK',
+      group: 'SECURITY & NETWORK',
       items: [
-        { id: 'p2p', label: 'Mesh Topology', icon: Radio },
-        { id: 'audit', label: 'Security Audit Log', icon: ShieldCheck, count: events.length },
+        { id: 'p2p', label: 'Mesh Telemetry', icon: Radio },
+        { id: 'audit', label: 'Security Stream', icon: ShieldCheck, count: events.length },
       ],
     },
   ];
 
   return (
-    <div className="flex h-screen w-screen bg-[#09090b] text-zinc-100 font-sans select-none overflow-hidden antialiased">
-      {/* ENTERPRISE SIDEBAR */}
-      <aside className="w-64 flex-shrink-0 bg-[#0c0c0e] border-r border-zinc-800/80 flex flex-col justify-between p-4 z-20">
+    <div className="flex h-screen w-screen bg-[#080a0f] text-slate-100 font-sans select-none overflow-hidden antialiased">
+      {/* SIDEBAR */}
+      <aside className="w-64 flex-shrink-0 bg-[#0d0f17]/90 border-r border-slate-800/80 flex flex-col justify-between p-4 z-20 backdrop-blur-xl">
         <div>
           {/* Brand Header */}
-          <div className="flex items-center gap-3 px-2 py-3 mb-6 border-b border-zinc-800/60 pb-4">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-sm">
-              <Shield className="w-4 h-4 text-white" />
+          <div className="flex items-center gap-3 px-2 py-3 mb-6 border-b border-slate-800/60 pb-4">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-md shadow-indigo-600/20">
+              <Shield className="w-5 h-5 text-white" />
             </div>
             <div>
-              <div className="font-semibold text-sm tracking-tight text-white flex items-center gap-1.5">
+              <div className="font-bold text-sm tracking-tight text-white flex items-center gap-1.5">
                 PersonalVault
-                <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
-                  v0.1.0
+                <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/50">
+                  Go Engine
                 </span>
               </div>
-              <div className="text-[11px] text-zinc-400 font-mono">Pure Go Infrastructure</div>
+              <div className="text-[11px] text-slate-400 font-mono flex items-center gap-1 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 status-pulse"></span>
+                <span>FTS5 • AES-256</span>
+              </div>
             </div>
           </div>
 
@@ -270,10 +284,10 @@ export default function App() {
           <div className="space-y-6">
             {navigation.map((group, idx) => (
               <div key={idx}>
-                <div className="px-2 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2 font-mono">
+                <div className="px-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">
                   {group.group}
                 </div>
-                <nav className="space-y-0.5">
+                <nav className="space-y-1">
                   {group.items.map((item) => {
                     const Icon = item.icon;
                     const active = activeTab === item.id;
@@ -281,19 +295,19 @@ export default function App() {
                       <button
                         key={item.id}
                         onClick={() => setActiveTab(item.id)}
-                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors ${
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-150 ${
                           active
-                            ? 'bg-zinc-800/90 text-white shadow-sm border border-zinc-700/60'
-                            : 'text-zinc-400 hover:bg-zinc-800/40 hover:text-zinc-200'
+                            ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/40 shadow-sm'
+                            : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                         }`}
                       >
                         <div className="flex items-center gap-2.5">
-                          <Icon className={`w-4 h-4 ${active ? 'text-indigo-400' : 'text-zinc-400'}`} />
+                          <Icon className={`w-4 h-4 ${active ? 'text-indigo-400' : 'text-slate-400'}`} />
                           <span>{item.label}</span>
                         </div>
                         {item.count !== undefined && (
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${
-                            active ? 'bg-zinc-700 text-zinc-200' : 'bg-zinc-900 text-zinc-500'
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono ${
+                            active ? 'bg-indigo-500/30 text-indigo-200 border border-indigo-500/30' : 'bg-slate-900 text-slate-400'
                           }`}>
                             {item.count}
                           </span>
@@ -307,54 +321,59 @@ export default function App() {
           </div>
         </div>
 
-        {/* System Telemetry Footer */}
-        <div className="pt-4 border-t border-zinc-800/80">
-          <div className="bg-[#121215] rounded-xl p-3 border border-zinc-800 text-xs space-y-2">
-            <div className="flex items-center justify-between font-mono text-[11px]">
-              <span className="text-zinc-400 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                P2P Link Status
-              </span>
-              <span className="text-emerald-400 font-medium">{p2pLatency} ms</span>
-            </div>
-            <div className="text-[10px] text-zinc-500 font-mono flex justify-between border-t border-zinc-800/60 pt-2">
-              <span>DIRECT_P2P</span>
-              <span>192.168.0.x</span>
-            </div>
+        {/* Mesh P2P Telemetry Widget */}
+        <div className="bg-[#0b0e18] rounded-2xl p-3 border border-slate-800/80 space-y-2">
+          <div className="flex items-center justify-between font-mono text-[11px]">
+            <span className="text-slate-400 flex items-center gap-1.5">
+              <Radio className="w-3.5 h-3.5 text-cyan-400" />
+              P2P Telemetry
+            </span>
+            <span className="text-emerald-400 font-bold">{p2pLatency} ms</span>
+          </div>
+          <div className="text-[10px] text-slate-400 font-mono flex justify-between border-t border-slate-800/60 pt-2">
+            <span>DIRECT_P2P</span>
+            <span className="text-indigo-400">192.168.0.x</span>
           </div>
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
+      {/* MAIN CONTAINER */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* HEADER BAR */}
-        <header className="h-14 border-b border-zinc-800/80 px-6 flex items-center justify-between bg-[#0c0c0e]/80 backdrop-blur-md">
-          {/* Spotlight Trigger Button */}
-          <button
-            onClick={() => setSearchOpen(true)}
-            className="flex items-center gap-3 px-3 py-1.5 bg-[#121215] hover:bg-zinc-800/70 border border-zinc-800 rounded-lg text-xs text-zinc-400 transition-all w-80 shadow-sm group"
-          >
-            <Search className="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-200" />
-            <span>Search vault entities...</span>
-            <kbd className="ml-auto bg-zinc-900 border border-zinc-700/80 text-[10px] font-mono px-1.5 py-0.5 rounded text-zinc-400">
-              Ctrl K
-            </kbd>
-          </button>
+        <header className="h-15 border-b border-slate-800/80 px-6 flex items-center justify-between bg-[#0b0e17]/80 backdrop-blur-md">
+          {/* Breadcrumb Path */}
+          <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+            <span className="text-slate-300 font-semibold">PersonalVault</span>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-indigo-400 capitalize font-semibold">{activeTab}</span>
+          </div>
 
-          {/* Action Header Items */}
+          {/* Action Tools */}
           <div className="flex items-center gap-3">
+            {/* Command Palette Trigger */}
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="flex items-center gap-3 px-3 py-1.5 bg-[#0e121e] hover:bg-[#141a2a] border border-slate-800 hover:border-indigo-500/40 rounded-xl text-xs text-slate-400 transition-all w-72 shadow-inner group"
+            >
+              <Search className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
+              <span className="font-mono text-slate-300">Command menu (FTS5)...</span>
+              <kbd className="ml-auto bg-slate-900 border border-slate-800 text-[10px] font-mono px-1.5 py-0.5 rounded text-indigo-300">
+                Ctrl K
+              </kbd>
+            </button>
+
             {/* View Mode Toggle */}
-            <div className="flex bg-[#121215] border border-zinc-800 rounded-lg p-0.5">
+            <div className="flex bg-[#0e121e] border border-slate-800 rounded-xl p-0.5">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-1 rounded transition-colors ${viewMode === 'grid' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-400 hover:text-white'}`}
+                className={`p-1.5 rounded-lg transition-colors ${viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
                 title="Grid View"
               >
                 <Grid className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => setViewMode('table')}
-                className={`p-1 rounded transition-colors ${viewMode === 'table' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-400 hover:text-white'}`}
+                className={`p-1.5 rounded-lg transition-colors ${viewMode === 'table' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
                 title="Table View"
               >
                 <List className="w-3.5 h-3.5" />
@@ -364,18 +383,18 @@ export default function App() {
             {/* Refresh Data */}
             <button
               onClick={fetchAllData}
-              className="p-1.5 bg-[#121215] hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white rounded-lg transition-colors"
+              className="p-2 bg-[#0e121e] hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-xl transition-colors"
               title="Refresh Data"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             </button>
 
-            {/* Upload Button */}
+            {/* Upload File Button */}
             <button
               onClick={() => setUploadModalOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium shadow-sm transition-colors"
+              className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-600/20 transition-all hover:scale-105"
             >
-              <UploadCloud className="w-3.5 h-3.5" />
+              <UploadCloud className="w-4 h-4" />
               <span>Upload Asset</span>
             </button>
           </div>
@@ -383,101 +402,103 @@ export default function App() {
 
         {/* MAIN BODY VIEW */}
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* DASHBOARD OVERVIEW */}
+          {/* DASHBOARD TAB */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
-              {/* Metric Cards */}
+              {/* Telemetry Metric Cards */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="saas-card saas-card-hover rounded-xl p-4 border border-zinc-800">
-                  <div className="flex items-center justify-between text-zinc-400 text-xs font-medium">
+                <div className="titanium-card titanium-card-hover rounded-2xl p-5 border border-slate-800">
+                  <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">
                     <span>Vault Assets</span>
                     <FolderKanban className="w-4 h-4 text-indigo-400" />
                   </div>
-                  <div className="text-2xl font-semibold text-white mt-2">{items.length}</div>
-                  <div className="text-[11px] text-zinc-500 mt-1 font-mono">SHA-256 Sharded</div>
-                </div>
-
-                <div className="saas-card saas-card-hover rounded-xl p-4 border border-zinc-800">
-                  <div className="flex items-center justify-between text-zinc-400 text-xs font-medium">
-                    <span>Knowledge Base</span>
-                    <FileText className="w-4 h-4 text-emerald-400" />
+                  <div className="text-3xl font-bold text-white mt-3">{items.length}</div>
+                  <div className="text-[11px] text-emerald-400 mt-2 font-mono flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5" /> SHA-256 Encrypted
                   </div>
-                  <div className="text-2xl font-semibold text-white mt-2">{notes.length}</div>
-                  <div className="text-[11px] text-zinc-500 mt-1 font-mono">SQLite FTS5 Indexed</div>
                 </div>
 
-                <div className="saas-card saas-card-hover rounded-xl p-4 border border-zinc-800">
-                  <div className="flex items-center justify-between text-zinc-400 text-xs font-medium">
-                    <span>Projects & Tasks</span>
+                <div className="titanium-card titanium-card-hover rounded-2xl p-5 border border-slate-800">
+                  <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">
+                    <span>Knowledge Docs</span>
+                    <FileText className="w-4 h-4 text-cyan-400" />
+                  </div>
+                  <div className="text-3xl font-bold text-white mt-3">{notes.length}</div>
+                  <div className="text-[11px] text-slate-400 mt-2 font-mono">FTS5 Indexed</div>
+                </div>
+
+                <div className="titanium-card titanium-card-hover rounded-2xl p-5 border border-slate-800">
+                  <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">
+                    <span>Active Projects</span>
                     <Layers className="w-4 h-4 text-amber-400" />
                   </div>
-                  <div className="text-2xl font-semibold text-white mt-2">{projects.length}</div>
-                  <div className="text-[11px] text-zinc-500 mt-1 font-mono">Active Kanban</div>
+                  <div className="text-3xl font-bold text-white mt-3">{projects.length}</div>
+                  <div className="text-[11px] text-amber-400 mt-2 font-mono">Kanban Workflows</div>
                 </div>
 
-                <div className="saas-card saas-card-hover rounded-xl p-4 border border-zinc-800">
-                  <div className="flex items-center justify-between text-zinc-400 text-xs font-medium">
+                <div className="titanium-card titanium-card-hover rounded-2xl p-5 border border-slate-800">
+                  <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider font-mono">
                     <span>Mesh P2P Link</span>
                     <Wifi className="w-4 h-4 text-emerald-400" />
                   </div>
-                  <div className="text-xl font-semibold text-emerald-400 mt-2">DIRECT_P2P</div>
-                  <div className="text-[11px] text-zinc-500 mt-1 font-mono">{p2pLatency} ms roundtrip</div>
+                  <div className="text-2xl font-bold text-emerald-400 mt-3">DIRECT_P2P</div>
+                  <div className="text-[11px] text-slate-400 mt-2 font-mono">{p2pLatency} ms roundtrip</div>
                 </div>
               </div>
 
               {/* Two Column Layout: Recent Assets & Audit Log */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Recent Assets Card */}
-                <div className="saas-card rounded-xl p-5 border border-zinc-800">
-                  <div className="flex items-center justify-between mb-4 border-b border-zinc-800/80 pb-3">
+                <div className="titanium-card rounded-2xl p-5 border border-slate-800">
+                  <div className="flex items-center justify-between mb-4 border-b border-slate-800/80 pb-3">
                     <h3 className="font-semibold text-sm text-white flex items-center gap-2">
                       <FolderKanban className="w-4 h-4 text-indigo-400" />
-                      Recent Assets
+                      Recent Vault Assets
                     </h3>
-                    <button onClick={() => setActiveTab('assets')} className="text-xs text-indigo-400 hover:underline flex items-center gap-1">
-                      View all <ChevronRight className="w-3 h-3" />
+                    <button onClick={() => setActiveTab('assets')} className="text-xs text-indigo-400 hover:underline flex items-center gap-1 font-mono">
+                      View all ({items.length}) <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     {items.slice(0, 5).map((item) => (
-                      <div key={item.id} className="p-3 bg-[#0d0d0f] rounded-lg border border-zinc-800/70 flex items-center justify-between">
+                      <div key={item.id} className="p-3 bg-[#0a0d15] rounded-xl border border-slate-800 flex items-center justify-between">
                         <div>
                           <div className="text-xs font-medium text-white">{item.title}</div>
-                          <div className="text-[10px] font-mono text-zinc-500 mt-0.5">
+                          <div className="text-[10px] font-mono text-slate-400 mt-0.5">
                             {item.file_hash ? `SHA256: ${item.file_hash.substring(0, 20)}...` : item.item_type}
                           </div>
                         </div>
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono border border-zinc-700">
-                          {item.is_encrypted ? 'AES-256' : 'PLAIN'}
+                        <span className="text-[10px] px-2.5 py-1 rounded-md bg-indigo-950/80 text-indigo-300 font-mono border border-indigo-800/50">
+                          {item.is_encrypted ? 'AES-256-GCM' : 'PLAIN'}
                         </span>
                       </div>
                     ))}
                     {items.length === 0 && (
-                      <div className="text-xs text-zinc-500 italic py-6 text-center">No vault assets stored yet.</div>
+                      <div className="text-xs text-slate-400 italic py-6 text-center">No vault assets uploaded yet.</div>
                     )}
                   </div>
                 </div>
 
-                {/* Audit Stream Card */}
-                <div className="saas-card rounded-xl p-5 border border-zinc-800">
-                  <div className="flex items-center justify-between mb-4 border-b border-zinc-800/80 pb-3">
+                {/* Audit Log Stream */}
+                <div className="titanium-card rounded-2xl p-5 border border-slate-800">
+                  <div className="flex items-center justify-between mb-4 border-b border-slate-800/80 pb-3">
                     <h3 className="font-semibold text-sm text-white flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-amber-400" />
                       Security Audit Stream
                     </h3>
-                    <button onClick={() => setActiveTab('audit')} className="text-xs text-amber-400 hover:underline flex items-center gap-1">
-                      Full Log <ChevronRight className="w-3 h-3" />
+                    <button onClick={() => setActiveTab('audit')} className="text-xs text-amber-400 hover:underline flex items-center gap-1 font-mono">
+                      Full Log ({events.length}) <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     {events.slice(0, 5).map((evt) => (
-                      <div key={evt.id} className="p-2.5 bg-[#0d0d0f] rounded-lg border-l-2 border-amber-500 text-xs">
-                        <div className="font-mono text-amber-400 font-medium">{evt.event_type}</div>
-                        <div className="text-[11px] text-zinc-400 mt-0.5">{evt.message}</div>
+                      <div key={evt.id} className="p-3 bg-[#0a0d15] rounded-xl border-l-3 border-amber-500 text-xs">
+                        <div className="font-mono text-amber-400 font-bold">{evt.event_type}</div>
+                        <div className="text-[11px] text-slate-300 mt-0.5">{evt.message}</div>
                       </div>
                     ))}
                     {events.length === 0 && (
-                      <div className="text-xs text-zinc-500 italic py-6 text-center">No security audit events recorded.</div>
+                      <div className="text-xs text-slate-400 italic py-6 text-center">No security audit records logged.</div>
                     )}
                   </div>
                 </div>
@@ -490,85 +511,83 @@ export default function App() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-white">Vault Storage</h2>
-                  <p className="text-xs text-zinc-400">SHA-256 Sharded & AES-256-GCM Encrypted Objects</p>
+                  <h2 className="text-xl font-bold text-white">Vault Storage Matrix</h2>
+                  <p className="text-xs text-slate-400 font-mono">SHA-256 Content Addressed & AES-256-GCM Encrypted</p>
                 </div>
                 <button
                   onClick={() => setUploadModalOpen(true)}
-                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium flex items-center gap-2 shadow-sm transition-colors"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-md transition-all"
                 >
-                  <UploadCloud className="w-3.5 h-3.5" /> Upload File
+                  <UploadCloud className="w-4 h-4" /> Upload Asset
                 </button>
               </div>
 
               {viewMode === 'grid' ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {items.map((item) => (
-                    <div key={item.id} className="saas-card saas-card-hover rounded-xl p-4 flex flex-col justify-between border border-zinc-800">
+                    <div key={item.id} className="titanium-card titanium-card-hover rounded-2xl p-5 flex flex-col justify-between border border-slate-800">
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-semibold text-white truncate max-w-[180px]">{item.title}</span>
-                          <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">
+                          <span className="text-sm font-bold text-indigo-400 truncate max-w-[200px]">{item.title}</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-300 font-mono border border-slate-800">
                             {(item.size_bytes / 1024).toFixed(1)} KB
                           </span>
                         </div>
-                        <p className="text-xs text-zinc-400 mb-3 line-clamp-2">{item.description || 'No description'}</p>
+                        <p className="text-xs text-slate-300 mb-3">{item.description || 'No description provided'}</p>
                         {item.file_hash && (
-                          <div className="bg-[#0b0b0e] p-2 rounded-lg border border-zinc-800/80 text-[10px] font-mono text-zinc-400 break-all mb-3">
+                          <div className="bg-[#070911] p-2.5 rounded-xl border border-slate-800 text-[10px] font-mono text-slate-400 break-all mb-3">
                             <div className="flex items-center justify-between text-indigo-400 mb-1">
                               <span>SHA-256:</span>
                               <button
                                 onClick={() => copyToClipboard(item.file_hash, item.id)}
                                 className="hover:text-white transition-colors"
                               >
-                                {copiedId === item.id ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                {copiedId === item.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                               </button>
                             </div>
                             <span>{item.file_hash}</span>
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center justify-between pt-2 border-t border-zinc-800/80 text-xs">
-                        <div className="flex items-center gap-1 text-emerald-400 font-mono text-[11px]">
-                          <Lock className="w-3 h-3" />
-                          <span>{item.is_encrypted ? 'AES-256' : 'PLAIN'}</span>
+                      <div className="flex items-center justify-between pt-3 border-t border-slate-800/80 text-xs">
+                        <div className="flex items-center gap-1.5 text-emerald-400 font-mono text-[11px]">
+                          <Lock className="w-3.5 h-3.5" />
+                          <span>{item.is_encrypted ? 'AES-256-GCM' : 'PLAIN'}</span>
                         </div>
                         <button
                           onClick={() => handleDeleteItem(item.id)}
-                          className="p-1 text-zinc-500 hover:text-rose-400 transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors"
                           title="Delete asset"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
                   ))}
-                  {items.length === 0 && (
-                    <div className="col-span-3 text-center text-xs text-zinc-500 py-12">No files stored yet.</div>
-                  )}
+                  {items.length === 0 && <div className="col-span-3 text-center text-xs text-slate-400 py-12">No assets stored yet.</div>}
                 </div>
               ) : (
-                <div className="saas-card rounded-xl overflow-hidden border border-zinc-800">
+                <div className="titanium-card rounded-2xl overflow-hidden border border-slate-800">
                   <table className="w-full text-left text-xs font-mono">
-                    <thead className="bg-[#0b0b0e] text-zinc-400 border-b border-zinc-800 text-[10px] uppercase tracking-wider">
+                    <thead className="bg-[#070911] text-slate-400 border-b border-slate-800 text-[10px] uppercase tracking-wider">
                       <tr>
-                        <th className="p-3">Title</th>
-                        <th className="p-3">SHA-256 Hash</th>
-                        <th className="p-3">Size</th>
-                        <th className="p-3">Encryption</th>
-                        <th className="p-3 text-right">Actions</th>
+                        <th className="p-4">Title</th>
+                        <th className="p-4">SHA-256 Hash</th>
+                        <th className="p-4">Size</th>
+                        <th className="p-4">Encryption</th>
+                        <th className="p-4 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-800/60">
+                    <tbody className="divide-y divide-slate-800/60">
                       {items.map((item) => (
-                        <tr key={item.id} className="hover:bg-zinc-800/30">
-                          <td className="p-3 font-semibold text-white">{item.title}</td>
-                          <td className="p-3 text-zinc-400 text-[11px]">{item.file_hash ? item.file_hash.substring(0, 24) + '...' : '-'}</td>
-                          <td className="p-3 text-zinc-300">{(item.size_bytes / 1024).toFixed(1)} KB</td>
-                          <td className="p-3 text-emerald-400">{item.is_encrypted ? 'AES-256' : 'PLAIN'}</td>
-                          <td className="p-3 text-right">
-                            <button onClick={() => handleDeleteItem(item.id)} className="text-zinc-500 hover:text-rose-400">
-                              <Trash2 className="w-3.5 h-3.5 inline" />
+                        <tr key={item.id} className="hover:bg-slate-800/30">
+                          <td className="p-4 font-semibold text-white">{item.title}</td>
+                          <td className="p-4 text-slate-400 text-[11px]">{item.file_hash ? item.file_hash.substring(0, 24) + '...' : '-'}</td>
+                          <td className="p-4 text-slate-300">{(item.size_bytes / 1024).toFixed(1)} KB</td>
+                          <td className="p-4 text-emerald-400">{item.is_encrypted ? 'AES-256' : 'PLAIN'}</td>
+                          <td className="p-4 text-right">
+                            <button onClick={() => handleDeleteItem(item.id)} className="text-slate-400 hover:text-rose-400">
+                              <Trash2 className="w-4 h-4 inline" />
                             </button>
                           </td>
                         </tr>
@@ -580,101 +599,106 @@ export default function App() {
             </div>
           )}
 
-          {/* KNOWLEDGE BASE TAB */}
+          {/* KNOWLEDGE BASE STUDIO TAB (NOTES) */}
           {activeTab === 'notes' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-white">Knowledge Base</h2>
-                  <p className="text-xs text-zinc-400">Markdown docs & SQLite FTS5 instant search</p>
+                  <h2 className="text-xl font-bold text-white">Knowledge Studio</h2>
+                  <p className="text-xs text-slate-400 font-mono">Markdown documentation & instant SQLite FTS5 search</p>
                 </div>
                 <button
                   onClick={() => setNewNoteModalOpen(true)}
-                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium flex items-center gap-2 shadow-sm transition-colors"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-md transition-all"
                 >
-                  <Plus className="w-3.5 h-3.5" /> New Document
+                  <Plus className="w-4 h-4" /> New Document
                 </button>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[580px]">
-                {/* Note Selector List */}
-                <div className="saas-card rounded-xl p-3 border border-zinc-800 overflow-y-auto space-y-1.5">
+                {/* Note Selector Directory */}
+                <div className="titanium-card rounded-2xl p-4 border border-slate-800 overflow-y-auto space-y-2">
                   {notes.map((n) => (
                     <div
                       key={n.id}
                       onClick={() => setSelectedNote(n)}
-                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                      className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
                         selectedNote?.id === n.id
-                          ? 'bg-zinc-800/90 border-indigo-500/50 text-white'
-                          : 'bg-[#0b0b0e] border-zinc-800/80 text-zinc-400 hover:bg-zinc-800/40 hover:text-zinc-200'
+                          ? 'bg-emerald-950/40 border-emerald-500/60 text-white shadow-md'
+                          : 'bg-[#090d15] border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-semibold text-xs text-white">{n.title}</span>
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-500 border border-zinc-800">
+                        <span className="font-bold text-xs text-emerald-400">{n.title}</span>
+                        <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">
                           {n.folder || 'general'}
                         </span>
                       </div>
-                      <p className="text-[11px] text-zinc-400 truncate">{n.content}</p>
+                      <p className="text-[11px] text-slate-400 truncate">{n.content}</p>
                     </div>
                   ))}
-                  {notes.length === 0 && <div className="text-xs text-zinc-500 text-center py-12">No documents created.</div>}
+                  {notes.length === 0 && <div className="text-xs text-slate-400 text-center py-12">No notes created.</div>}
                 </div>
 
                 {/* Note Detail Panel */}
-                <div className="lg:col-span-2 saas-card rounded-xl p-5 border border-zinc-800 flex flex-col justify-between">
+                <div className="lg:col-span-2 titanium-card rounded-2xl p-6 border border-slate-800 flex flex-col justify-between">
                   {selectedNote ? (
-                    <div className="space-y-3 flex-1">
-                      <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-                        <h3 className="text-base font-semibold text-white">{selectedNote.title}</h3>
-                        <span className="text-xs font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
+                    <div className="space-y-4 flex-1">
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div>
+                          <h3 className="text-base font-bold text-white">{selectedNote.title}</h3>
+                          <div className="text-[10px] font-mono text-slate-400 mt-0.5">
+                            {selectedNote.content.length} chars • {(selectedNote.content.length / 200).toFixed(1)} min read
+                          </div>
+                        </div>
+                        <span className="text-xs font-mono px-2.5 py-1 rounded-md bg-emerald-950/80 text-emerald-300 border border-emerald-800">
                           {selectedNote.folder || 'general'}
                         </span>
                       </div>
-                      <pre className="text-xs font-mono text-zinc-300 bg-[#0b0b0e] p-4 rounded-xl border border-zinc-800/80 h-[460px] overflow-y-auto whitespace-pre-wrap leading-relaxed">
+                      <pre className="text-xs font-mono text-slate-200 bg-[#070911] p-5 rounded-2xl border border-slate-800 h-[450px] overflow-y-auto whitespace-pre-wrap leading-relaxed">
                         {selectedNote.content}
                       </pre>
                     </div>
                   ) : (
-                    <div className="text-center text-zinc-500 text-xs py-24">Select a document from the left list.</div>
+                    <div className="text-center text-slate-400 text-xs py-24">Select a document from the left directory.</div>
                   )}
                 </div>
               </div>
             </div>
           )}
 
-          {/* PROJECTS TAB */}
+          {/* MISSION OPERATIONS (PROJECTS) */}
           {activeTab === 'projects' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-white">Projects & Tasks</h2>
-                  <p className="text-xs text-zinc-400">Sprint planning and task execution</p>
+                  <h2 className="text-xl font-bold text-white">Mission Operations Kanban</h2>
+                  <p className="text-xs text-slate-400 font-mono">Sprint planning & project execution</p>
                 </div>
                 <button
                   onClick={() => setNewProjectModalOpen(true)}
-                  className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-medium flex items-center gap-2 shadow-sm transition-colors"
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-md transition-all"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Add Project
+                  <Plus className="w-4 h-4" /> Add Project
                 </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {projects.map((p) => (
-                  <div key={p.id} className="saas-card saas-card-hover rounded-xl p-4 border border-zinc-800">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold text-xs text-white">{p.name}</h3>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 font-medium border border-amber-800/50 uppercase">
+                  <div key={p.id} className="titanium-card titanium-card-hover rounded-2xl p-5 border border-slate-800">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-bold text-sm text-white">{p.name}</h3>
+                      <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-amber-950 text-amber-300 font-bold uppercase tracking-wider border border-amber-800/60">
                         {p.status}
                       </span>
                     </div>
-                    <p className="text-xs text-zinc-400 mb-3">{p.description || 'No description'}</p>
-                    <div className="w-full bg-zinc-900 h-1.5 rounded-full overflow-hidden border border-zinc-800">
-                      <div className="bg-amber-500 h-full w-3/4 rounded-full"></div>
+                    <p className="text-xs text-slate-400 leading-relaxed mb-4">{p.description || 'No description'}</p>
+                    <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-800">
+                      <div className="bg-amber-500 h-full w-2/3 rounded-full"></div>
                     </div>
                   </div>
                 ))}
-                {projects.length === 0 && <div className="col-span-3 text-center text-xs text-zinc-500 py-12">No projects created.</div>}
+                {projects.length === 0 && <div className="col-span-3 text-center text-xs text-slate-400 py-12">No projects created yet.</div>}
               </div>
             </div>
           )}
@@ -682,36 +706,36 @@ export default function App() {
           {/* CLIENTS */}
           {activeTab === 'clients' && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-white">Entities & Clients</h2>
+              <h2 className="text-xl font-bold text-white">Entities & Client Intelligence</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {clients.map((c) => (
-                  <div key={c.id} className="saas-card rounded-xl p-4 border border-zinc-800">
-                    <h3 className="font-semibold text-xs text-white">{c.name}</h3>
-                    <p className="text-xs text-zinc-400 mt-1 font-mono">{c.email || 'No email'}</p>
+                  <div key={c.id} className="titanium-card rounded-2xl p-5 border border-slate-800">
+                    <h3 className="font-bold text-sm text-indigo-400">{c.name}</h3>
+                    <p className="text-xs text-slate-400 mt-1 font-mono">{c.email || 'No contact email'}</p>
                   </div>
                 ))}
-                {clients.length === 0 && <div className="col-span-3 text-center text-xs text-zinc-500 py-12">No client records.</div>}
+                {clients.length === 0 && <div className="col-span-3 text-center text-xs text-slate-400 py-12">No entity records.</div>}
               </div>
             </div>
           )}
 
-          {/* MANAGED DEVICES */}
+          {/* MANAGED HARDWARE NODES */}
           {activeTab === 'devices' && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-white">Managed Infrastructure Nodes</h2>
+              <h2 className="text-xl font-bold text-white">Managed Infrastructure Nodes</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {devices.map((d) => (
-                  <div key={d.id} className="saas-card rounded-xl p-4 border border-zinc-800">
+                  <div key={d.id} className="titanium-card rounded-2xl p-5 border border-slate-800">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-xs text-white">{d.name}</h3>
-                      <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800">
+                      <h3 className="font-bold text-sm text-cyan-400">{d.name}</h3>
+                      <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
                         {d.ip_address}
                       </span>
                     </div>
-                    <p className="text-xs text-zinc-400 mt-2">{d.os_type}</p>
+                    <p className="text-xs text-slate-400 mt-2">{d.os_type}</p>
                   </div>
                 ))}
-                {devices.length === 0 && <div className="col-span-3 text-center text-xs text-zinc-500 py-12">No nodes registered.</div>}
+                {devices.length === 0 && <div className="col-span-3 text-center text-xs text-slate-400 py-12">No hardware nodes registered.</div>}
               </div>
             </div>
           )}
@@ -719,17 +743,17 @@ export default function App() {
           {/* AUTOMATION SCRIPTS */}
           {activeTab === 'scripts' && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-white">Automation Scripts</h2>
+              <h2 className="text-xl font-bold text-white">Automation Script Matrix</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {scripts.map((s) => (
-                  <div key={s.id} className="saas-card rounded-xl p-4 border border-zinc-800">
-                    <h3 className="font-semibold text-xs text-emerald-400">{s.title}</h3>
-                    <pre className="text-xs font-mono text-zinc-300 bg-[#0b0b0e] p-3 rounded-lg mt-2 overflow-x-auto border border-zinc-800">
+                  <div key={s.id} className="titanium-card rounded-2xl p-5 border border-slate-800">
+                    <h3 className="font-bold text-sm text-emerald-400">{s.title}</h3>
+                    <pre className="text-xs font-mono text-slate-300 bg-[#070a12] p-4 rounded-xl mt-3 overflow-x-auto border border-slate-800">
                       {s.code}
                     </pre>
                   </div>
                 ))}
-                {scripts.length === 0 && <div className="col-span-2 text-center text-xs text-zinc-500 py-12">No scripts saved.</div>}
+                {scripts.length === 0 && <div className="col-span-2 text-center text-xs text-slate-400 py-12">No scripts registered.</div>}
               </div>
             </div>
           )}
@@ -737,15 +761,15 @@ export default function App() {
           {/* STORAGE BOXES */}
           {activeTab === 'boxes' && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-white">Storage Containers</h2>
+              <h2 className="text-xl font-bold text-white">Storage Containers & Units</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {boxes.map((b) => (
-                  <div key={b.id} className="saas-card rounded-xl p-4 border border-zinc-800">
-                    <h3 className="font-semibold text-xs text-white">{b.name}</h3>
-                    <p className="text-xs text-zinc-400 mt-1">{b.location}</p>
+                  <div key={b.id} className="titanium-card rounded-2xl p-5 border border-slate-800">
+                    <h3 className="font-bold text-sm text-amber-400">{b.name}</h3>
+                    <p className="text-xs text-slate-400 mt-1">{b.location}</p>
                   </div>
                 ))}
-                {boxes.length === 0 && <div className="col-span-3 text-center text-xs text-zinc-500 py-12">No storage boxes registered.</div>}
+                {boxes.length === 0 && <div className="col-span-3 text-center text-xs text-slate-400 py-12">No containers registered.</div>}
               </div>
             </div>
           )}
@@ -754,109 +778,129 @@ export default function App() {
           {activeTab === 'p2p' && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-lg font-semibold text-white">Mesh Network Topology</h2>
-                <p className="text-xs text-zinc-400">Zero-dependency UDP Hole Punching & Subnet Discovery</p>
+                <h2 className="text-xl font-bold text-white">Mesh Network Telemetry</h2>
+                <p className="text-xs text-slate-400 font-mono">Zero-dependency UDP Hole Punching & Directed Subnet Broadcast Engine</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="saas-card rounded-xl p-4 border border-emerald-500/30">
-                  <div className="text-xs font-mono text-zinc-400 uppercase">Link Mode</div>
-                  <div className="text-xl font-semibold text-emerald-400 mt-2">DIRECT_P2P</div>
-                  <p className="text-[11px] text-zinc-400 mt-2">LAN Directed Subnet Broadcast</p>
+                <div className="titanium-card rounded-2xl p-5 border border-emerald-500/40">
+                  <div className="text-xs font-mono text-slate-400 uppercase">Link Mode</div>
+                  <div className="text-2xl font-bold text-emerald-400 mt-2">DIRECT_P2P</div>
+                  <p className="text-[11px] text-slate-400 mt-2">LAN Directed Subnet Broadcast</p>
                 </div>
 
-                <div className="saas-card rounded-xl p-4 border border-zinc-800">
-                  <div className="text-xs font-mono text-zinc-400 uppercase">Target Node</div>
-                  <div className="text-xl font-semibold text-indigo-400 mt-2">phone</div>
-                  <p className="text-[11px] text-zinc-400 mt-2">LAN IP: 192.168.0.x</p>
+                <div className="titanium-card rounded-2xl p-5 border border-slate-800">
+                  <div className="text-xs font-mono text-slate-400 uppercase">Linked Peer</div>
+                  <div className="text-2xl font-bold text-indigo-400 mt-2">phone</div>
+                  <p className="text-[11px] text-slate-400 mt-2">LAN IP: 192.168.0.x</p>
                 </div>
 
-                <div className="saas-card rounded-xl p-4 border border-zinc-800">
-                  <div className="text-xs font-mono text-zinc-400 uppercase">Latency</div>
-                  <div className="text-xl font-semibold text-emerald-400 mt-2">{p2pLatency} ms</div>
-                  <p className="text-[11px] text-zinc-400 mt-2">Direct Local UDP</p>
+                <div className="titanium-card rounded-2xl p-5 border border-slate-800">
+                  <div className="text-xs font-mono text-slate-400 uppercase">Roundtrip Latency</div>
+                  <div className="text-2xl font-bold text-cyan-400 mt-2">{p2pLatency} ms</div>
+                  <p className="text-[11px] text-slate-400 mt-2">Direct Local UDP</p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* SECURITY AUDIT LOG */}
+          {/* SECURITY AUDIT STREAM */}
           {activeTab === 'audit' && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-white">Security Audit Log</h2>
-              <div className="saas-card rounded-xl p-4 border border-zinc-800 space-y-2">
-                {events.map((evt) => (
-                  <div key={evt.id} className="p-2.5 bg-[#0b0b0e] rounded-lg border-l-2 border-amber-500 text-xs flex items-center justify-between">
-                    <div>
-                      <span className="font-mono text-amber-400 font-semibold mr-3">[{evt.event_type}]</span>
-                      <span className="text-zinc-200">{evt.message}</span>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-white">Security & Audit Stream</h2>
+                <div className="flex gap-2">
+                  {['ALL', 'file_uploaded', 'item_created'].map((filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => setAuditFilter(filter)}
+                      className={`px-3 py-1 rounded-lg text-xs font-mono transition-colors ${
+                        auditFilter === filter
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          : 'bg-slate-900 text-slate-400 border border-slate-800'
+                      }`}
+                    >
+                      {filter}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="titanium-card rounded-2xl p-5 border border-slate-800 space-y-3">
+                {events
+                  .filter((e) => auditFilter === 'ALL' || e.event_type === auditFilter)
+                  .map((evt) => (
+                    <div key={evt.id} className="p-3 bg-[#080c16] rounded-xl border-l-4 border-amber-500 text-xs flex items-center justify-between">
+                      <div>
+                        <span className="font-mono text-amber-400 font-bold mr-3">[{evt.event_type}]</span>
+                        <span className="text-slate-200">{evt.message}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-                {events.length === 0 && <div className="text-xs text-zinc-500 text-center py-6">No audit records found.</div>}
+                  ))}
+                {events.length === 0 && <div className="text-xs text-slate-400 text-center py-8">No security events recorded.</div>}
               </div>
             </div>
           )}
         </main>
       </div>
 
-      {/* COMMAND PALETTE MODAL (Ctrl + K) */}
+      {/* SPOTLIGHT MODAL (Ctrl + K) */}
       {searchOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center pt-24">
-          <div className="w-full max-w-xl bg-[#121215] border border-zinc-800 rounded-xl shadow-2xl overflow-hidden">
-            <div className="p-3 border-b border-zinc-800 flex items-center gap-3">
-              <Search className="w-4 h-4 text-zinc-400" />
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-start justify-center pt-24">
+          <div className="w-full max-w-xl bg-[#0e121e] border border-indigo-500/40 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="p-4 border-b border-slate-800 flex items-center gap-3">
+              <Search className="w-5 h-5 text-indigo-400" />
               <input
                 type="text"
                 autoFocus
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Type a command or search index (FTS5)..."
-                className="w-full bg-transparent text-xs text-white focus:outline-none placeholder-zinc-500 font-mono"
+                className="w-full bg-transparent text-sm text-white focus:outline-none placeholder-slate-500 font-mono"
               />
-              <button onClick={() => setSearchOpen(false)} className="text-zinc-500 hover:text-white">
-                <X className="w-4 h-4" />
+              <button onClick={() => setSearchOpen(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="max-h-80 overflow-y-auto p-3 space-y-1.5 font-mono text-xs">
+            <div className="max-h-96 overflow-y-auto p-4 space-y-2 font-mono text-xs">
               {searchResults.map((res, i) => (
-                <div key={i} className="p-2.5 bg-[#0b0b0e] hover:bg-zinc-800/60 rounded-lg border border-zinc-800 cursor-pointer">
-                  <div className="flex items-center justify-between text-indigo-400 font-semibold">
+                <div key={i} className="p-3 bg-[#090d17] hover:bg-[#12192c] rounded-xl border border-slate-800 cursor-pointer transition-colors">
+                  <div className="flex items-center justify-between font-bold text-indigo-400">
                     <span>{res.title}</span>
-                    <span className="text-[9px] bg-zinc-900 px-1.5 py-0.5 rounded text-zinc-400">{res.entity_type}</span>
+                    <span className="text-[10px] bg-slate-900 px-2 py-0.5 rounded text-slate-400 border border-slate-800">{res.entity_type}</span>
                   </div>
-                  <p className="text-zinc-400 mt-0.5 text-[11px]">{res.snippet}</p>
+                  <p className="text-slate-300 mt-1 text-[11px]">{res.snippet}</p>
                 </div>
               ))}
               {searchQuery && searchResults.length === 0 && (
-                <div className="text-xs text-zinc-500 text-center py-6">No matches found.</div>
+                <div className="text-xs text-slate-400 text-center py-8">No matches found.</div>
               )}
               {!searchQuery && (
-                <div className="text-xs text-zinc-500 text-center py-6">Type to search items, notes, and projects.</div>
+                <div className="text-xs text-slate-400 text-center py-8">Type query to search across all vault tables.</div>
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* UPLOAD MODAL */}
+      {/* FILE UPLOAD MODAL */}
       {uploadModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center">
-          <div className="w-full max-w-md bg-[#121215] border border-zinc-800 rounded-xl p-5 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center">
+          <div className="w-full max-w-md bg-[#0e121e] border border-slate-800 rounded-2xl p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-sm text-white flex items-center gap-2">
-                <UploadCloud className="w-4 h-4 text-indigo-400" />
+              <h3 className="font-bold text-base text-white flex items-center gap-2">
+                <UploadCloud className="w-5 h-5 text-indigo-400" />
                 Upload Vault Asset
               </h3>
-              <button onClick={() => setUploadModalOpen(false)} className="text-zinc-500 hover:text-white">
-                <X className="w-4 h-4" />
+              <button onClick={() => setUploadModalOpen(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="mb-4 flex items-center justify-between p-2.5 bg-[#0b0b0e] rounded-lg border border-zinc-800">
+            <div className="mb-4 flex items-center justify-between p-3 bg-[#070911] rounded-xl border border-slate-800">
               <div className="flex items-center gap-2 text-xs">
-                <Lock className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-zinc-300 font-mono">AES-256-GCM Encryption</span>
+                <Lock className="w-4 h-4 text-emerald-400" />
+                <span className="text-slate-200 font-mono">AES-256-GCM Encryption</span>
               </div>
               <input
                 type="checkbox"
@@ -866,10 +910,10 @@ export default function App() {
               />
             </div>
 
-            <label className="border border-dashed border-zinc-700 hover:border-indigo-500/60 rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors bg-[#0b0b0e]">
-              <UploadCloud className="w-8 h-8 text-indigo-400 mb-2" />
-              <span className="text-xs font-semibold text-white">Click or Drag file to upload</span>
-              <span className="text-[10px] font-mono text-zinc-500 mt-1">Automatic SHA-256 Sharding</span>
+            <label className="border-2 border-dashed border-slate-700 hover:border-indigo-500/60 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all bg-[#070911]">
+              <UploadCloud className="w-10 h-10 text-indigo-400 mb-2" />
+              <span className="text-xs font-bold text-white">Click or Drag file to upload</span>
+              <span className="text-[10px] font-mono text-slate-400 mt-1">Automatic SHA-256 Content Sharding</span>
               <input
                 type="file"
                 className="hidden"
@@ -878,8 +922,8 @@ export default function App() {
             </label>
 
             {uploading && (
-              <div className="mt-3 text-center text-xs text-indigo-400 flex items-center justify-center gap-2 font-mono">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Encrypting & Uploading...
+              <div className="mt-4 text-center text-xs text-indigo-400 flex items-center justify-center gap-2 font-mono">
+                <RefreshCw className="w-4 h-4 animate-spin" /> Storing & Encrypting...
               </div>
             )}
           </div>
@@ -888,12 +932,12 @@ export default function App() {
 
       {/* NEW NOTE MODAL */}
       {newNoteModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center">
-          <form onSubmit={handleCreateNote} className="w-full max-w-lg bg-[#121215] border border-zinc-800 rounded-xl p-5 shadow-2xl space-y-3">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center">
+          <form onSubmit={handleCreateNote} className="w-full max-w-lg bg-[#0e121e] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-sm text-white">New Markdown Document</h3>
-              <button type="button" onClick={() => setNewNoteModalOpen(false)} className="text-zinc-500 hover:text-white">
-                <X className="w-4 h-4" />
+              <h3 className="font-bold text-base text-white">New Markdown Document</h3>
+              <button type="button" onClick={() => setNewNoteModalOpen(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
               </button>
             </div>
 
@@ -903,7 +947,7 @@ export default function App() {
               placeholder="Document Title"
               value={noteForm.title}
               onChange={(e) => setNoteForm({ ...noteForm, title: e.target.value })}
-              className="w-full bg-[#0b0b0e] border border-zinc-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
+              className="w-full bg-[#070911] border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
             />
 
             <textarea
@@ -912,18 +956,18 @@ export default function App() {
               placeholder="Markdown content..."
               value={noteForm.content}
               onChange={(e) => setNoteForm({ ...noteForm, content: e.target.value })}
-              className="w-full bg-[#0b0b0e] border border-zinc-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
+              className="w-full bg-[#070911] border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
             />
 
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setNewNoteModalOpen(false)}
-                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-300 rounded-lg font-mono"
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 rounded-xl font-mono"
               >
                 Cancel
               </button>
-              <button type="submit" className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-xs text-white font-medium rounded-lg shadow-sm">
+              <button type="submit" className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-xs text-white font-semibold rounded-xl shadow-md">
                 Save Document
               </button>
             </div>
@@ -933,12 +977,12 @@ export default function App() {
 
       {/* NEW PROJECT MODAL */}
       {newProjectModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center">
-          <form onSubmit={handleCreateProject} className="w-full max-w-md bg-[#121215] border border-zinc-800 rounded-xl p-5 shadow-2xl space-y-3">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center">
+          <form onSubmit={handleCreateProject} className="w-full max-w-md bg-[#0e121e] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-sm text-white">Create Project</h3>
-              <button type="button" onClick={() => setNewProjectModalOpen(false)} className="text-zinc-500 hover:text-white">
-                <X className="w-4 h-4" />
+              <h3 className="font-bold text-base text-white">Create Project</h3>
+              <button type="button" onClick={() => setNewProjectModalOpen(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
               </button>
             </div>
 
@@ -948,7 +992,7 @@ export default function App() {
               placeholder="Project Name"
               value={projectForm.name}
               onChange={(e) => setProjectForm({ ...projectForm, name: e.target.value })}
-              className="w-full bg-[#0b0b0e] border border-zinc-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
+              className="w-full bg-[#070911] border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
             />
 
             <textarea
@@ -956,18 +1000,18 @@ export default function App() {
               placeholder="Project Description..."
               value={projectForm.description}
               onChange={(e) => setProjectForm({ ...projectForm, description: e.target.value })}
-              className="w-full bg-[#0b0b0e] border border-zinc-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
+              className="w-full bg-[#070911] border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
             />
 
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setNewProjectModalOpen(false)}
-                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-300 rounded-lg font-mono"
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 rounded-xl font-mono"
               >
                 Cancel
               </button>
-              <button type="submit" className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-xs text-white font-medium rounded-lg shadow-sm">
+              <button type="submit" className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-xs text-white font-semibold rounded-xl shadow-md">
                 Create Project
               </button>
             </div>
