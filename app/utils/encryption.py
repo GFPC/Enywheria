@@ -2,7 +2,7 @@ import base64
 import hashlib
 import os
 from pathlib import Path
-from typing import Tuple
+from typing import Optional, Tuple
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
