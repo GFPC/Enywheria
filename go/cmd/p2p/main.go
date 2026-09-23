@@ -235,9 +235,14 @@ func (n *P2PNode) readLoop() {
 func parseCLIArgs(args []string) (relay, nodeID, targetID, token string, localPort int) {
 	token = "default_p2p_token"
 	var positional []string
+	execName := os.Args[0]
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
+		if arg == execName || strings.Contains(arg, "enywheria-p2p") {
+			continue
+		}
+
 		if strings.HasPrefix(arg, "-") {
 			cleanKey := strings.TrimLeft(arg, "-")
 			var val string
@@ -266,17 +271,17 @@ func parseCLIArgs(args []string) (relay, nodeID, targetID, token string, localPo
 		}
 	}
 
-	if relay == "" && len(positional) > 0 {
-		relay = positional[0]
-	}
-	if nodeID == "" && len(positional) > 1 {
-		nodeID = positional[1]
-	}
-	if targetID == "" && len(positional) > 2 {
-		targetID = positional[2]
-	}
-	if (token == "" || token == "default_p2p_token") && len(positional) > 3 {
-		token = positional[3]
+	// Smart positional assignment
+	for _, p := range positional {
+		if relay == "" && strings.Contains(p, ":") {
+			relay = p
+		} else if nodeID == "" {
+			nodeID = p
+		} else if targetID == "" {
+			targetID = p
+		} else if token == "" || token == "default_p2p_token" {
+			token = p
+		}
 	}
 
 	return
