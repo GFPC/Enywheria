@@ -12,8 +12,10 @@ import (
 )
 
 type NodeInfo struct {
-	Addr     *net.UDPAddr
-	LastSeen time.Time
+	Addr      *net.UDPAddr
+	LocalIP   string
+	LocalPort int
+	LastSeen  time.Time
 }
 
 type RelayServer struct {
@@ -76,16 +78,21 @@ func (s *RelayServer) handlePacket(data []byte, addr *net.UDPAddr) {
 		return
 	}
 
+	localIP, _ := pkt.Payload["local_ip"].(string)
+	localPortFloat, _ := pkt.Payload["local_port"].(float64)
+
 	s.nodesMutex.Lock()
 	s.nodes[sender] = &NodeInfo{
-		Addr:     addr,
-		LastSeen: time.Now(),
+		Addr:      addr,
+		LocalIP:   localIP,
+		LocalPort: int(localPortFloat),
+		LastSeen:  time.Now(),
 	}
 	s.nodesMutex.Unlock()
 
 	switch pkt.Type {
 	case "REGISTER":
-		log.Printf("Registered node '%s' at %s\n", sender, addr)
+		log.Printf("Registered node '%s' at %s (local: %s:%d)\n", sender, addr, localIP, int(localPortFloat))
 		ack, _ := protocol.CreatePacket("REGISTER_ACK", "SERVER", sender, s.token, map[string]interface{}{
 			"public_ip":   addr.IP.String(),
 			"public_port": addr.Port,
@@ -97,24 +104,31 @@ func (s *RelayServer) handlePacket(data []byte, addr *net.UDPAddr) {
 		log.Printf("Node '%s' requested lookup for '%s'\n", sender, target)
 		s.nodesMutex.RLock()
 		targetNode, exists := s.nodes[target]
+		senderNode, senderExists := s.nodes[sender]
 		s.nodesMutex.RUnlock()
 
 		if exists {
-			// Notify sender about target's endpoint
+			// Notify sender about target's endpoint (public + local)
 			infoReq, _ := protocol.CreatePacket("PEER_INFO", "SERVER", sender, s.token, map[string]interface{}{
-				"target_id": target,
-				"ip":        targetNode.Addr.IP.String(),
-				"port":      targetNode.Addr.Port,
+				"target_id":  target,
+				"ip":         targetNode.Addr.IP.String(),
+				"port":       targetNode.Addr.Port,
+				"local_ip":   targetNode.LocalIP,
+				"local_port": targetNode.LocalPort,
 			})
 			s.conn.WriteToUDP(infoReq, addr)
 
-			// Notify target about sender's endpoint
-			infoTarget, _ := protocol.CreatePacket("PEER_INFO", "SERVER", target, s.token, map[string]interface{}{
-				"target_id": sender,
-				"ip":        addr.IP.String(),
-				"port":      addr.Port,
-			})
-			s.conn.WriteToUDP(infoTarget, targetNode.Addr)
+			// Notify target about sender's endpoint (public + local)
+			if senderExists {
+				infoTarget, _ := protocol.CreatePacket("PEER_INFO", "SERVER", target, s.token, map[string]interface{}{
+					"target_id":  sender,
+					"ip":         addr.IP.String(),
+					"port":       addr.Port,
+					"local_ip":   senderNode.LocalIP,
+					"local_port": senderNode.LocalPort,
+				})
+				s.conn.WriteToUDP(infoTarget, targetNode.Addr)
+			}
 		} else {
 			log.Printf("Lookup failed: target '%s' not registered\n", target)
 		}

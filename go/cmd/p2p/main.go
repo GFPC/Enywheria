@@ -21,11 +21,67 @@ type P2PNode struct {
 	token          string
 	conn           *net.UDPConn
 	peerAddr       *net.UDPAddr
+	localPeerAddr  *net.UDPAddr
 	isDirect       bool
 	peerAddrMutex  sync.RWMutex
 	registeredChan chan bool
 	peerDiscovChan chan bool
 	punchAckChan   chan bool
+}
+
+func getLocalIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return ""
+	}
+	for _, address := range addrs {
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+	return ""
+}
+
+func getBroadcastAddresses(port int) []*net.UDPAddr {
+	var addrs []*net.UDPAddr
+	if gaddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("255.255.255.255:%d", port)); err == nil {
+		addrs = append(addrs, gaddr)
+	}
+
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return addrs
+	}
+
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		addrsList, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, addr := range addrsList {
+			ipnet, ok := addr.(*net.IPNet)
+			if !ok || ipnet.IP.IsLoopback() || ipnet.IP.To4() == nil {
+				continue
+			}
+			ip := ipnet.IP.To4()
+			mask := ipnet.Mask
+			if len(mask) == 4 {
+				bcast := make(net.IP, 4)
+				for i := 0; i < 4; i++ {
+					bcast[i] = ip[i] | ^mask[i]
+				}
+				if uaddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", bcast.String(), port)); err == nil {
+					addrs = append(addrs, uaddr)
+				}
+			}
+		}
+	}
+	return addrs
 }
 
 func NewP2PNode(nodeID, targetID, relayStr, token string, localPort int) (*P2PNode, error) {
@@ -80,11 +136,6 @@ func (n *P2PNode) startLANDiscovery() {
 }
 
 func (n *P2PNode) lanBroadcastLoop() {
-	bcastAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("255.255.255.255:%d", lanBroadcastPort))
-	if err != nil {
-		return
-	}
-
 	ticker := time.NewTicker(3 * time.Second)
 	defer ticker.Stop()
 
@@ -94,7 +145,10 @@ func (n *P2PNode) lanBroadcastLoop() {
 		announce, _ := protocol.CreatePacket("LAN_ANNOUNCE", n.nodeID, n.targetID, n.token, map[string]interface{}{
 			"port": float64(boundPort),
 		})
-		n.conn.WriteToUDP(announce, bcastAddr)
+		bcastAddrs := getBroadcastAddresses(lanBroadcastPort)
+		for _, baddr := range bcastAddrs {
+			n.conn.WriteToUDP(announce, baddr)
+		}
 	}
 }
 
@@ -143,7 +197,12 @@ func (n *P2PNode) lanListenLoop() {
 }
 
 func (n *P2PNode) register() {
-	pkt, _ := protocol.CreatePacket("REGISTER", n.nodeID, "", n.token, nil)
+	localIP := getLocalIP()
+	boundPort := n.conn.LocalAddr().(*net.UDPAddr).Port
+	pkt, _ := protocol.CreatePacket("REGISTER", n.nodeID, "", n.token, map[string]interface{}{
+		"local_ip":   localIP,
+		"local_port": float64(boundPort),
+	})
 	n.conn.WriteToUDP(pkt, n.relayAddr)
 }
 
@@ -169,18 +228,30 @@ func (n *P2PNode) ConnectPeer() bool {
 
 	n.peerAddrMutex.RLock()
 	targetAddr := n.peerAddr
+	localTargetAddr := n.localPeerAddr
 	n.peerAddrMutex.RUnlock()
 
-	if targetAddr == nil {
+	if targetAddr == nil && localTargetAddr == nil {
 		return false
 	}
 
-	log.Printf("[Go P2P] Punching UDP hole to %s at %s...\n", n.targetID, targetAddr)
+	if localTargetAddr != nil {
+		log.Printf("[Go P2P] Punching local LAN UDP hole to %s at %s...\n", n.targetID, localTargetAddr)
+	}
+	if targetAddr != nil {
+		log.Printf("[Go P2P] Punching WAN UDP hole to %s at %s...\n", n.targetID, targetAddr)
+	}
+
 	punchPkt, _ := protocol.CreatePacket("PUNCH", n.nodeID, n.targetID, n.token, nil)
 
 	for i := 0; i < 5; i++ {
-		n.conn.WriteToUDP(punchPkt, targetAddr)
-		time.Sleep(200 * time.Millisecond)
+		if localTargetAddr != nil {
+			n.conn.WriteToUDP(punchPkt, localTargetAddr)
+		}
+		if targetAddr != nil {
+			n.conn.WriteToUDP(punchPkt, targetAddr)
+		}
+		time.Sleep(150 * time.Millisecond)
 	}
 
 	select {
@@ -257,18 +328,28 @@ func (n *P2PNode) readLoop() {
 		case "PEER_INFO":
 			ipStr, _ := pkt.Payload["ip"].(string)
 			portNum, _ := pkt.Payload["port"].(float64)
+			localIP, _ := pkt.Payload["local_ip"].(string)
+			localPortNum, _ := pkt.Payload["local_port"].(float64)
 			targetID, _ := pkt.Payload["target_id"].(string)
 
-			if targetID == n.targetID && ipStr != "" {
-				addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", ipStr, int(portNum)))
-				if err == nil {
-					n.peerAddrMutex.Lock()
-					n.peerAddr = addr
-					n.peerAddrMutex.Unlock()
-					select {
-					case n.peerDiscovChan <- true:
-					default:
+			if targetID == n.targetID {
+				n.peerAddrMutex.Lock()
+				if localIP != "" && localPortNum > 0 {
+					laddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", localIP, int(localPortNum)))
+					if err == nil {
+						n.localPeerAddr = laddr
 					}
+				}
+				if ipStr != "" {
+					addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", ipStr, int(portNum)))
+					if err == nil {
+						n.peerAddr = addr
+					}
+				}
+				n.peerAddrMutex.Unlock()
+				select {
+				case n.peerDiscovChan <- true:
+				default:
 				}
 			}
 
