@@ -1,11 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   color-scheme: dark;
 }
 
@@ -14,13 +14,14 @@
 }
 
 body {
-  background-color: #080a0f;
-  color: #f1f5f9;
+  background-color: #080b12;
+  color: #e2e8f0;
   overflow: hidden;
   user-select: none;
+  font-size: 12px;
 }
 
-/* Bespoke Minimalist Scrollbar */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
@@ -31,57 +32,47 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.15);
+  background: rgba(139, 92, 246, 0.25);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.35);
+  background: rgba(139, 92, 246, 0.5);
 }
 
-/* Titanium Glass Cards */
-.titanium-card {
-  background: rgba(15, 18, 26, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+/* Cyber Cards */
+.cyber-card {
+  background: rgba(15, 20, 34, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.titanium-card-hover {
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+.cyber-card-hover {
+  transition: all 0.15s ease-in-out;
 }
 
-.titanium-card-hover:hover {
-  background: rgba(22, 27, 38, 0.85);
-  border-color: rgba(99, 102, 241, 0.35);
-  box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.6), 0 0 20px -5px rgba(99, 102, 241, 0.15);
-  transform: translateY(-1px);
+.cyber-card-hover:hover {
+  background: rgba(22, 30, 50, 0.9);
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
-/* Subtle Gradient Text */
-.brand-gradient-text {
-  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%);
+.gradient-purple-text {
+  background: linear-gradient(135deg, #c084fc 0%, #8b5cf6 50%, #6366f1 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
-.indigo-gradient-text {
-  background: linear-gradient(135deg, #a5b4fc 0%, #6366f1 50%, #4338ca 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.pulse-dot {
+  animation: pulse-glow 2s infinite ease-in-out;
 }
 
-/* Animated Pulse Ring */
-@keyframes ring-pulse {
+@keyframes pulse-glow {
   0%, 100% {
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
   }
   50% {
     box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
   }
-}
-
-.status-pulse {
-  animation: ring-pulse 2.5s infinite ease-in-out;
 }
