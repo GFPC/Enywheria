@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -233,53 +232,64 @@ func (n *P2PNode) readLoop() {
 	}
 }
 
+func parseCLIArgs(args []string) (relay, nodeID, targetID, token string, localPort int) {
+	token = "default_p2p_token"
+	var positional []string
+
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if strings.HasPrefix(arg, "-") {
+			cleanKey := strings.TrimLeft(arg, "-")
+			var val string
+			if idx := strings.Index(cleanKey, "="); idx != -1 {
+				val = cleanKey[idx+1:]
+				cleanKey = cleanKey[:idx]
+			} else if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+				val = args[i+1]
+				i++
+			}
+
+			switch strings.ToLower(cleanKey) {
+			case "relay", "r":
+				relay = val
+			case "node-id", "node_id", "nodeid", "node", "n":
+				nodeID = val
+			case "target-id", "target_id", "targetid", "target", "t":
+				targetID = val
+			case "token", "k":
+				token = val
+			case "local-port", "port", "p":
+				fmt.Sscanf(val, "%d", &localPort)
+			}
+		} else {
+			positional = append(positional, arg)
+		}
+	}
+
+	if relay == "" && len(positional) > 0 {
+		relay = positional[0]
+	}
+	if nodeID == "" && len(positional) > 1 {
+		nodeID = positional[1]
+	}
+	if targetID == "" && len(positional) > 2 {
+		targetID = positional[2]
+	}
+	if (token == "" || token == "default_p2p_token") && len(positional) > 3 {
+		token = positional[3]
+	}
+
+	return
+}
+
 func main() {
-	var relayVal, nodeVal, targetVal, tokenVal string
-	var portVal int
-
-	// Primary flags
-	flag.StringVar(&relayVal, "relay", "", "Relay server address e.g. 1.2.3.4:9000")
-	flag.StringVar(&relayVal, "r", "", "Relay server address (alias)")
-
-	flag.StringVar(&nodeVal, "node-id", "", "My Node ID")
-	flag.StringVar(&nodeVal, "node_id", "", "My Node ID (alias)")
-	flag.StringVar(&nodeVal, "nodeid", "", "My Node ID (alias)")
-	flag.StringVar(&nodeVal, "node", "", "My Node ID (alias)")
-	flag.StringVar(&nodeVal, "n", "", "My Node ID (alias)")
-
-	flag.StringVar(&targetVal, "target-id", "", "Target peer Node ID")
-	flag.StringVar(&targetVal, "target_id", "", "Target peer Node ID (alias)")
-	flag.StringVar(&targetVal, "targetid", "", "Target peer Node ID (alias)")
-	flag.StringVar(&targetVal, "target", "", "Target peer Node ID (alias)")
-	flag.StringVar(&targetVal, "t", "", "Target peer Node ID (alias)")
-
-	flag.StringVar(&tokenVal, "token", "default_p2p_token", "Secret authentication token")
-	flag.StringVar(&tokenVal, "k", "default_p2p_token", "Secret authentication token (alias)")
-
-	flag.IntVar(&portVal, "local-port", 0, "Local UDP port")
-	flag.IntVar(&portVal, "p", 0, "Local UDP port (alias)")
-
-	flag.Parse()
-
-	// Positional arguments fallback: <relay> <node-id> <target-id> [token]
-	args := flag.Args()
-	if relayVal == "" && len(args) > 0 {
-		relayVal = args[0]
-	}
-	if nodeVal == "" && len(args) > 1 {
-		nodeVal = args[1]
-	}
-	if targetVal == "" && len(args) > 2 {
-		targetVal = args[2]
-	}
-	if (tokenVal == "" || tokenVal == "default_p2p_token") && len(args) > 3 {
-		tokenVal = args[3]
-	}
+	relayVal, nodeVal, targetVal, tokenVal, portVal := parseCLIArgs(os.Args[1:])
 
 	if relayVal == "" || nodeVal == "" || targetVal == "" {
-		log.Println("Usage (Flags):      enywheria-p2p -relay <IP:Port> -node phone -target pc [-token <token>]")
-		log.Println("Usage (Positional): enywheria-p2p <IP:Port> <node-id> <target-id> [token]")
-		log.Fatalf("Error: Missing required parameters: relay, node-id, or target-id.")
+		fmt.Println("[P2P Node] Usage:")
+		fmt.Println("  Flags:      enywheria-p2p -relay 89.125.140.47:9000 -node phone -target pc [-token secret]")
+		fmt.Println("  Positional: enywheria-p2p 89.125.140.47:9000 phone pc [secret]")
+		log.Fatalf("Error: Missing required arguments (relay address, node-id, or target-id).")
 	}
 
 	node, err := NewP2PNode(nodeVal, targetVal, relayVal, tokenVal, portVal)
