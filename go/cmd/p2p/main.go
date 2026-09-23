@@ -234,18 +234,55 @@ func (n *P2PNode) readLoop() {
 }
 
 func main() {
-	relay := flag.String("relay", "", "Relay server address e.g. 1.2.3.4:9000")
-	nodeID := flag.String("node-id", "", "My Node ID (e.g. pc, phone)")
-	targetID := flag.String("target-id", "", "Target peer Node ID (e.g. phone, pc)")
-	token := flag.String("token", "default_p2p_token", "Secret authentication token")
-	localPort := flag.Int("local-port", 0, "Local UDP port")
+	var relayVal, nodeVal, targetVal, tokenVal string
+	var portVal int
+
+	// Primary flags
+	flag.StringVar(&relayVal, "relay", "", "Relay server address e.g. 1.2.3.4:9000")
+	flag.StringVar(&relayVal, "r", "", "Relay server address (alias)")
+
+	flag.StringVar(&nodeVal, "node-id", "", "My Node ID")
+	flag.StringVar(&nodeVal, "node_id", "", "My Node ID (alias)")
+	flag.StringVar(&nodeVal, "nodeid", "", "My Node ID (alias)")
+	flag.StringVar(&nodeVal, "node", "", "My Node ID (alias)")
+	flag.StringVar(&nodeVal, "n", "", "My Node ID (alias)")
+
+	flag.StringVar(&targetVal, "target-id", "", "Target peer Node ID")
+	flag.StringVar(&targetVal, "target_id", "", "Target peer Node ID (alias)")
+	flag.StringVar(&targetVal, "targetid", "", "Target peer Node ID (alias)")
+	flag.StringVar(&targetVal, "target", "", "Target peer Node ID (alias)")
+	flag.StringVar(&targetVal, "t", "", "Target peer Node ID (alias)")
+
+	flag.StringVar(&tokenVal, "token", "default_p2p_token", "Secret authentication token")
+	flag.StringVar(&tokenVal, "k", "default_p2p_token", "Secret authentication token (alias)")
+
+	flag.IntVar(&portVal, "local-port", 0, "Local UDP port")
+	flag.IntVar(&portVal, "p", 0, "Local UDP port (alias)")
+
 	flag.Parse()
 
-	if *relay == "" || *nodeID == "" || *targetID == "" {
-		log.Fatalf("Usage: enywheria-p2p --relay <IP:Port> --node-id <id> --target-id <id> [--token <token>]")
+	// Positional arguments fallback: <relay> <node-id> <target-id> [token]
+	args := flag.Args()
+	if relayVal == "" && len(args) > 0 {
+		relayVal = args[0]
+	}
+	if nodeVal == "" && len(args) > 1 {
+		nodeVal = args[1]
+	}
+	if targetVal == "" && len(args) > 2 {
+		targetVal = args[2]
+	}
+	if (tokenVal == "" || tokenVal == "default_p2p_token") && len(args) > 3 {
+		tokenVal = args[3]
 	}
 
-	node, err := NewP2PNode(*nodeID, *targetID, *relay, *token, *localPort)
+	if relayVal == "" || nodeVal == "" || targetVal == "" {
+		log.Println("Usage (Flags):      enywheria-p2p -relay <IP:Port> -node phone -target pc [-token <token>]")
+		log.Println("Usage (Positional): enywheria-p2p <IP:Port> <node-id> <target-id> [token]")
+		log.Fatalf("Error: Missing required parameters: relay, node-id, or target-id.")
+	}
+
+	node, err := NewP2PNode(nodeVal, targetVal, relayVal, tokenVal, portVal)
 	if err != nil {
 		log.Fatalf("Initialization failed: %v", err)
 	}
@@ -254,17 +291,17 @@ func main() {
 	node.ConnectPeer()
 
 	fmt.Printf("\n=======================================================\n")
-	fmt.Printf("🚀 Go P2P Interactive Terminal Ready! Linked with '%s'\n", *targetID)
+	fmt.Printf("🚀 Go P2P Interactive Terminal Ready! Linked with '%s'\n", targetVal)
 	fmt.Printf("Commands: /ping, /help, exit\n")
 	fmt.Printf("Or type text to send encrypted message.\n")
 	fmt.Printf("=======================================================\n\n")
 
 	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Printf("%s> ", *nodeID)
+	fmt.Printf("%s> ", nodeVal)
 	for scanner.Scan() {
 		text := strings.TrimSpace(scanner.Text())
 		if text == "" {
-			fmt.Printf("%s> ", *nodeID)
+			fmt.Printf("%s> ", nodeVal)
 			continue
 		}
 		if strings.ToLower(text) == "exit" {
@@ -285,6 +322,6 @@ func main() {
 			})
 		}
 
-		fmt.Printf("%s> ", *nodeID)
+		fmt.Printf("%s> ", nodeVal)
 	}
 }
