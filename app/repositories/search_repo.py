@@ -2,11 +2,16 @@ import uuid
 from typing import List, Optional
 from sqlalchemy import text, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from rapidfuzz import process, fuzz
 from app.models.item import Item
 from app.models.note import Note
 from app.models.script import Script
 from app.schemas.search import SearchResultItem, SuggestionItem
+
+try:
+    from rapidfuzz import fuzz
+    HAS_RAPIDFUZZ = True
+except ImportError:
+    HAS_RAPIDFUZZ = False
 
 
 class SearchRepository:
@@ -145,9 +150,12 @@ class SearchRepository:
     async def fuzzy_rank(
         self, query_str: str, results: List[SearchResultItem]
     ) -> List[SearchResultItem]:
-        """Re-rank search results using rapidfuzz token_sort_ratio for highest relevance."""
+        """Re-rank search results using rapidfuzz token_sort_ratio if available."""
         if not results:
             return []
+
+        if not HAS_RAPIDFUZZ:
+            return results
 
         scored_results = []
         for item in results:
