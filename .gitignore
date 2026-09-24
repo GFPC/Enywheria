@@ -40,6 +40,8 @@ Desktop.ini
 
 # Frontend & Rust build
 node_modules/
+mobile/node_modules/
+mobile/dist/
 dist/
 target/
 .tauri/
