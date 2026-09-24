@@ -1,7 +1,6 @@
-package main
+package relay
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -92,7 +91,7 @@ func (s *RelayServer) handlePacket(data []byte, addr *net.UDPAddr) {
 
 	switch pkt.Type {
 	case "REGISTER":
-		log.Printf("Registered node '%s' at %s (local: %s:%d)\n", sender, addr, localIP, int(localPortFloat))
+		log.Printf("[Go STUN/Relay] Registered node '%s' at %s (local: %s:%d)\n", sender, addr, localIP, int(localPortFloat))
 		ack, _ := protocol.CreatePacket("REGISTER_ACK", "SERVER", sender, s.token, map[string]interface{}{
 			"public_ip":   addr.IP.String(),
 			"public_port": addr.Port,
@@ -101,14 +100,13 @@ func (s *RelayServer) handlePacket(data []byte, addr *net.UDPAddr) {
 
 	case "LOOKUP":
 		target := pkt.Target
-		log.Printf("Node '%s' requested lookup for '%s'\n", sender, target)
+		log.Printf("[Go STUN/Relay] Node '%s' requested lookup for '%s'\n", sender, target)
 		s.nodesMutex.RLock()
 		targetNode, exists := s.nodes[target]
 		senderNode, senderExists := s.nodes[sender]
 		s.nodesMutex.RUnlock()
 
 		if exists {
-			// Notify sender about target's endpoint (public + local)
 			infoReq, _ := protocol.CreatePacket("PEER_INFO", "SERVER", sender, s.token, map[string]interface{}{
 				"target_id":  target,
 				"ip":         targetNode.Addr.IP.String(),
@@ -118,7 +116,6 @@ func (s *RelayServer) handlePacket(data []byte, addr *net.UDPAddr) {
 			})
 			s.conn.WriteToUDP(infoReq, addr)
 
-			// Notify target about sender's endpoint (public + local)
 			if senderExists {
 				infoTarget, _ := protocol.CreatePacket("PEER_INFO", "SERVER", target, s.token, map[string]interface{}{
 					"target_id":  sender,
@@ -130,7 +127,7 @@ func (s *RelayServer) handlePacket(data []byte, addr *net.UDPAddr) {
 				s.conn.WriteToUDP(infoTarget, targetNode.Addr)
 			}
 		} else {
-			log.Printf("Lookup failed: target '%s' not registered\n", target)
+			log.Printf("[Go STUN/Relay] Lookup failed: target '%s' not registered\n", target)
 		}
 
 	case "RELAY_DATA":
@@ -146,17 +143,5 @@ func (s *RelayServer) handlePacket(data []byte, addr *net.UDPAddr) {
 	case "PING":
 		pong, _ := protocol.CreatePacket("PONG", "SERVER", sender, s.token, nil)
 		s.conn.WriteToUDP(pong, addr)
-	}
-}
-
-func main() {
-	host := flag.String("host", "0.0.0.0", "Host IP to bind")
-	port := flag.Int("port", 9000, "UDP Port to listen")
-	token := flag.String("token", "default_p2p_token", "Secret authentication token")
-	flag.Parse()
-
-	server := NewRelayServer(*token)
-	if err := server.ListenAndServe(*host, *port); err != nil {
-		log.Fatalf("Server error: %v", err)
 	}
 }

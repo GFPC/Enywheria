@@ -12,6 +12,7 @@ import (
 
 	"github.com/GFPC/Enywheria/pkg/fileservice"
 	"github.com/GFPC/Enywheria/pkg/models"
+	"github.com/GFPC/Enywheria/pkg/p2pnode"
 	"github.com/GFPC/Enywheria/pkg/repository"
 )
 
@@ -19,12 +20,17 @@ import (
 var embeddedDist embed.FS
 
 type Server struct {
-	repo *repository.Repository
-	fs   *fileservice.FileService
+	repo    *repository.Repository
+	fs      *fileservice.FileService
+	p2pNode *p2pnode.P2PNode
 }
 
 func NewServer(repo *repository.Repository, fs *fileservice.FileService) *Server {
 	return &Server{repo: repo, fs: fs}
+}
+
+func (s *Server) SetP2PNode(node *p2pnode.P2PNode) {
+	s.p2pNode = node
 }
 
 func withCORS(next http.HandlerFunc) http.HandlerFunc {
@@ -320,6 +326,10 @@ func (s *Server) handleFileUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = s.repo.CreateItem(&item)
 	_ = s.repo.LogEvent("file_uploaded", fmt.Sprintf("Uploaded file '%s' (%s)", header.Filename, hash[:8]), "")
+
+	if s.p2pNode != nil {
+		s.p2pNode.BroadcastFileAnnounce(hash, header.Filename, sizeBytes, header.Header.Get("Content-Type"))
+	}
 
 	writeJSON(w, http.StatusCreated, item)
 }

@@ -16,10 +16,10 @@ env/
 .env
 
 # Local data directories
-data/app.db
-data/files/
-data/keys/
-data/logs/
+data/
+go/data/
+go/go/
+go/bin/
 
 # Testing & Coverage
 .pytest_cache/

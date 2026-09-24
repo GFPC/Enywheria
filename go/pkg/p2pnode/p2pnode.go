@@ -1,17 +1,19 @@
-package main
+package p2pnode
 
 import (
-	"bufio"
+	"bytes"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net"
-	"os"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/GFPC/Enywheria/pkg/crypto"
+	"github.com/GFPC/Enywheria/pkg/fileservice"
+	"github.com/GFPC/Enywheria/pkg/models"
 	"github.com/GFPC/Enywheria/pkg/protocol"
+	"github.com/GFPC/Enywheria/pkg/repository"
 )
 
 type P2PNode struct {
@@ -27,6 +29,9 @@ type P2PNode struct {
 	registeredChan chan bool
 	peerDiscovChan chan bool
 	punchAckChan   chan bool
+
+	fileService *fileservice.FileService
+	repo        *repository.Repository
 }
 
 func getLocalIP() string {
@@ -84,7 +89,7 @@ func getBroadcastAddresses(port int) []*net.UDPAddr {
 	return addrs
 }
 
-func NewP2PNode(nodeID, targetID, relayStr, token string, localPort int) (*P2PNode, error) {
+func NewP2PNode(nodeID, targetID, relayStr, token string, localPort int, fs *fileservice.FileService, repo *repository.Repository) (*P2PNode, error) {
 	raddr, err := net.ResolveUDPAddr("udp", relayStr)
 	if err != nil {
 		return nil, fmt.Errorf("invalid relay address: %w", err)
@@ -109,15 +114,18 @@ func NewP2PNode(nodeID, targetID, relayStr, token string, localPort int) (*P2PNo
 		registeredChan: make(chan bool, 1),
 		peerDiscovChan: make(chan bool, 1),
 		punchAckChan:   make(chan bool, 1),
+		fileService:    fs,
+		repo:           repo,
 	}, nil
 }
+
+func (n *P2PNode) GetNodeID() string { return n.nodeID }
 
 func (n *P2PNode) Start() {
 	go n.readLoop()
 	go n.keepaliveLoop()
 	go n.startLANDiscovery()
 
-	// Register with relay server
 	n.register()
 
 	select {
@@ -291,6 +299,18 @@ func (n *P2PNode) SendMessage(payload map[string]interface{}) {
 	n.conn.WriteToUDP(pkt, dest)
 }
 
+// BroadcastFileAnnounce informs the target peer that a new file is available in the Vault
+func (n *P2PNode) BroadcastFileAnnounce(fileHash, title string, sizeBytes int64, mimeType string) {
+	log.Printf("[Go P2P] Broadcasting file announce for '%s' (Hash: %s) to peer '%s'...\n", title, fileHash[:8], n.targetID)
+	n.SendMessage(map[string]interface{}{
+		"cmd":   "file_announce",
+		"hash":  fileHash,
+		"title": title,
+		"size":  float64(sizeBytes),
+		"mime":  mimeType,
+	})
+}
+
 func (n *P2PNode) readLoop() {
 	buf := make([]byte, 65535)
 	for {
@@ -389,129 +409,107 @@ func (n *P2PNode) readLoop() {
 				cmd, _ := decPayload["cmd"].(string)
 				resp, _ := decPayload["resp"].(string)
 
-				if resp == "ping" {
-					sentTime, _ := decPayload["time"].(float64)
-					latency := float64(time.Now().UnixNano())/1e6 - (sentTime * 1000)
-					fmt.Printf("\n🏓 [%s] Pong from %s! Latency: %.2f ms\n%s> ", modeStr, pkt.Sender, latency, n.nodeID)
-				} else if cmd == "ping" {
+				switch cmd {
+				case "ping":
 					n.SendMessage(map[string]interface{}{"resp": "ping", "time": decPayload["time"]})
-				} else {
-					msgStr, _ := decPayload["msg"].(string)
-					if msgStr == "" {
-						msgStr = fmt.Sprintf("%v", decPayload)
+
+				case "file_announce":
+					fileHash, _ := decPayload["hash"].(string)
+					title, _ := decPayload["title"].(string)
+					sizeFloat, _ := decPayload["size"].(float64)
+					mime, _ := decPayload["mime"].(string)
+
+					log.Printf("\n📦 [%s] Received P2P File Announcement from '%s': '%s' (%s)\n", modeStr, pkt.Sender, title, fileHash[:8])
+
+					// Check if file is already present in local Vault
+					if n.fileService != nil {
+						_, err := n.fileService.ReadFile(fileHash, false)
+						if err != nil {
+							// File is missing -> Request transfer from peer
+							log.Printf("[Go P2P] File '%s' not present in local vault. Requesting transfer from '%s'...\n", title, pkt.Sender)
+							n.SendMessage(map[string]interface{}{
+								"cmd":   "file_request",
+								"hash":  fileHash,
+								"title": title,
+								"mime":  mime,
+								"size":  sizeFloat,
+							})
+						} else {
+							log.Printf("[Go P2P] File '%s' already exists in local vault. Skipping download.\n", title)
+						}
 					}
-					fmt.Printf("\n📩 [%s] From %s: %s\n%s> ", modeStr, pkt.Sender, msgStr, n.nodeID)
+
+				case "file_request":
+					fileHash, _ := decPayload["hash"].(string)
+					title, _ := decPayload["title"].(string)
+					mime, _ := decPayload["mime"].(string)
+
+					log.Printf("[Go P2P] Peer '%s' requested file '%s' (%s). Sending content over P2P...\n", pkt.Sender, title, fileHash[:8])
+					if n.fileService != nil {
+						dataBytes, err := n.fileService.ReadFile(fileHash, false)
+						if err == nil {
+							b64Data := base64.StdEncoding.EncodeToString(dataBytes)
+							n.SendMessage(map[string]interface{}{
+								"cmd":   "file_chunk",
+								"hash":  fileHash,
+								"title": title,
+								"mime":  mime,
+								"data":  b64Data,
+							})
+							log.Printf("[Go P2P] Successfully sent P2P file payload for '%s' to '%s'.\n", title, pkt.Sender)
+						} else {
+							log.Printf("[Go P2P] Failed to read file for transfer: %v\n", err)
+						}
+					}
+
+				case "file_chunk":
+					fileHash, _ := decPayload["hash"].(string)
+					title, _ := decPayload["title"].(string)
+					mime, _ := decPayload["mime"].(string)
+					b64Data, _ := decPayload["data"].(string)
+
+					log.Printf("[Go P2P] Receiving file chunk for '%s' (hash: %s)...\n", title, fileHash)
+
+					fileBytes, err := base64.StdEncoding.DecodeString(b64Data)
+					if err == nil && n.fileService != nil {
+						reader := bytes.NewReader(fileBytes)
+						savedHash, relPath, sizeBytes, sig, saveErr := n.fileService.SaveFile(reader, false)
+						if saveErr == nil {
+							log.Printf("\n⚡ [%s] P2P File Auto-Synced Successfully! '%s' saved to vault (%s, %d bytes)\n", modeStr, title, savedHash[:8], sizeBytes)
+							if n.repo != nil {
+								item := models.Item{
+									Title:       title,
+									Description: fmt.Sprintf("Auto-synced via P2P from node '%s'", pkt.Sender),
+									ItemType:    "asset",
+									MimeType:    mime,
+									SizeBytes:   sizeBytes,
+									FilePath:    relPath,
+									FileHash:    savedHash,
+									IsEncrypted: false,
+									DigitalSig:  sig,
+								}
+								_ = n.repo.CreateItem(&item)
+								_ = n.repo.LogEvent("p2p_file_synced", fmt.Sprintf("Synced file '%s' from '%s'", title, pkt.Sender), "")
+							}
+						} else {
+							log.Printf("[Go P2P] Failed to save synced file: %v\n", saveErr)
+						}
+					}
+
+				default:
+					if resp == "ping" {
+						sentTime, _ := decPayload["time"].(float64)
+						latency := float64(time.Now().UnixNano())/1e6 - (sentTime * 1000)
+						fmt.Printf("\n🏓 [%s] Pong from %s! Latency: %.2f ms\n%s> ", modeStr, pkt.Sender, latency, n.nodeID)
+					} else {
+						msgStr, _ := decPayload["msg"].(string)
+						if msgStr == "" {
+							msgStr = fmt.Sprintf("%v", decPayload)
+						}
+						fmt.Printf("\n📩 [%s] From %s: %s\n%s> ", modeStr, pkt.Sender, msgStr, n.nodeID)
+					}
 				}
 			}
 		}
-	}
-}
-
-func parseCLIArgs(args []string) (relay, nodeID, targetID, token string, localPort int) {
-	token = "default_p2p_token"
-	var positional []string
-	execName := os.Args[0]
-
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if arg == execName || strings.Contains(arg, "enywheria") || strings.Contains(arg, "/") || strings.Contains(arg, "\\") {
-			continue
-		}
-
-		if strings.HasPrefix(arg, "-") {
-			cleanKey := strings.TrimLeft(arg, "-")
-			var val string
-			if idx := strings.Index(cleanKey, "="); idx != -1 {
-				val = cleanKey[idx+1:]
-				cleanKey = cleanKey[:idx]
-			} else if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
-				val = args[i+1]
-				i++
-			}
-
-			switch strings.ToLower(cleanKey) {
-			case "relay", "r":
-				relay = val
-			case "node-id", "node_id", "nodeid", "node", "n":
-				nodeID = val
-			case "target-id", "target_id", "targetid", "target", "t":
-				targetID = val
-			case "token", "k":
-				token = val
-			case "local-port", "port", "p":
-				fmt.Sscanf(val, "%d", &localPort)
-			}
-		} else {
-			positional = append(positional, arg)
-		}
-	}
-
-	// Smart positional assignment
-	for _, p := range positional {
-		if relay == "" && strings.Contains(p, ":") {
-			relay = p
-		} else if nodeID == "" {
-			nodeID = p
-		} else if targetID == "" {
-			targetID = p
-		} else if token == "" || token == "default_p2p_token" {
-			token = p
-		}
-	}
-
-	return
-}
-
-func main() {
-	relayVal, nodeVal, targetVal, tokenVal, portVal := parseCLIArgs(os.Args[1:])
-
-	if relayVal == "" || nodeVal == "" || targetVal == "" {
-		fmt.Println("[P2P Node] Usage:")
-		fmt.Println("  Flags:      enywheria-p2p -relay 89.125.140.47:9000 -node phone -target pc [-token secret]")
-		fmt.Println("  Positional: enywheria-p2p 89.125.140.47:9000 phone pc [secret]")
-		log.Fatalf("Error: Missing required arguments (relay address, node-id, or target-id).")
-	}
-
-	node, err := NewP2PNode(nodeVal, targetVal, relayVal, tokenVal, portVal)
-	if err != nil {
-		log.Fatalf("Initialization failed: %v", err)
-	}
-
-	node.Start()
-	node.ConnectPeer()
-
-	fmt.Printf("\n=======================================================\n")
-	fmt.Printf("🚀 Go P2P Interactive Terminal Ready! Linked with '%s'\n", targetVal)
-	fmt.Printf("Commands: /ping, /help, exit\n")
-	fmt.Printf("Or type text to send encrypted message.\n")
-	fmt.Printf("=======================================================\n\n")
-
-	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Printf("%s> ", nodeVal)
-	for scanner.Scan() {
-		text := strings.TrimSpace(scanner.Text())
-		if text == "" {
-			fmt.Printf("%s> ", nodeVal)
-			continue
-		}
-		if strings.ToLower(text) == "exit" {
-			break
-		}
-
-		if text == "/ping" {
-			node.SendMessage(map[string]interface{}{
-				"cmd":  "ping",
-				"time": float64(time.Now().UnixNano()) / 1e9,
-			})
-		} else if text == "/help" {
-			fmt.Println("\nAvailable commands: /ping, /help, exit")
-		} else {
-			node.SendMessage(map[string]interface{}{
-				"msg":  text,
-				"time": float64(time.Now().UnixNano()) / 1e9,
-			})
-		}
-
-		fmt.Printf("%s> ", nodeVal)
 	}
 }
